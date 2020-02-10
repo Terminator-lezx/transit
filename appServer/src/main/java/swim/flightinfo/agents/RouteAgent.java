@@ -39,11 +39,13 @@ public class RouteAgent extends AbstractAgent {
   public CommandLane<Value> updateRouteInfoCommand = this.<Value>commandLane()
     .onCommand((Value newInfo) -> {
     //   System.out.println(newInfo);
-        this.agencyTag = newInfo.get("agencyTag").stringValue();
+        this.agencyTag = newInfo.get("agencyTag").stringValue("");
         this.routeUid = newInfo.get("uid").stringValue("");
         this.routeTag = newInfo.get("tag").stringValue("");
         this.routeInfo.set(newInfo);
-        this.getRouteDetails();
+        // if(!this.agencyTag.equals("")) {
+          this.getRouteDetails();
+        // }
     });
 
   @SwimLane("updateRouteDetails")
@@ -52,7 +54,9 @@ public class RouteAgent extends AbstractAgent {
         // System.out.println("----------------- route data start -----------");
 
         final Iterator<Item> routeIterator = routeDetails.iterator();
-      
+
+        Record agencyBounds = Record.create();
+
         while(routeIterator.hasNext()) {
           final Item xmlRowData = routeIterator.next();
           final Value routeData = xmlRowData.getAttr("route");      
@@ -81,12 +85,39 @@ public class RouteAgent extends AbstractAgent {
                 .slot("color", routeData.get("color"))
                 .slot("oppositeColor", routeData.get("oppositeColor"))
                 .slot("stopCount", this.stops.size())
-                .slot("pathCount", this.paths.size());
+                .slot("pathCount", this.paths.size())
+                .slot("minLat", routeData.get("latMin"))
+                .slot("minLong", routeData.get("lonMin"))
+                .slot("maxLat", routeData.get("latMax"))
+                .slot("maxLong", routeData.get("lonMax"));
 
             this.routeDetails.set(details);
-            // System.out.println(details);
+
+// System.out.println(routeData);
+            if(routeData.get("latMin").doubleValue() > agencyBounds.get("minLat").doubleValue(-0d)) {
+              agencyBounds.slot("minLat", routeData.get("latMin").doubleValue(0d));
+            }
+
+            if(routeData.get("latMax").doubleValue() > agencyBounds.get("maxLat").doubleValue(0d)) {
+              agencyBounds.slot("maxLat", routeData.get("latMax").doubleValue(0d));
+            }
+
+            if(routeData.get("lonMin").doubleValue() < agencyBounds.get("minLong").doubleValue(0d)) {
+              agencyBounds.slot("minLong", routeData.get("lonMin").doubleValue(0d));
+            }
+
+            if(routeData.get("lonMax").doubleValue() < agencyBounds.get("maxLong").doubleValue(0d)) {
+              agencyBounds.slot("maxLong", routeData.get("lonMax").doubleValue(0d));
+            }
+
+            
+            // System.out.print(routeData.get("latMin").doubleValue(0d));
+            // System.out.print("<");
+            // System.out.println(agencyBounds.get("minLat").doubleValue(0d));
           }
         }
+        // System.out.println(agencyBounds);
+        command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/agency/" + this.agencyTag), Uri.parse("updateAgencyBounds"), agencyBounds); 
         // System.out.println("----------------- route data end -----------");
 
     });

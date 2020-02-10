@@ -80,7 +80,7 @@ class IndexPage {
                 // window.requestAnimationFrame(this.drawAirplanes.bind(this));
             });
 
-        this.getVehicles("tahoe");
+        this.getVehicles("sf-muni");
     }
 
     getVehicles(agencyTag) {

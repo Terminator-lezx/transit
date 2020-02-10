@@ -20,6 +20,7 @@ import java.util.Iterator;
 public class AgencyAgent extends AbstractAgent {
 
   private String routeUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a=";
+  private Record agencyBounds;
 
   @SwimLane("tag")
   protected ValueLane<Value> tag;
@@ -35,6 +36,14 @@ public class AgencyAgent extends AbstractAgent {
 
   @SwimLane("vehicleList")
   protected MapLane<String, Value> vehicleList;
+
+  @SwimLane("updateAgencyBounds")
+  public CommandLane<Record> updateAgencyBoundsCommand = this.<Record>commandLane()
+    .onCommand((Record newBounds) -> {
+      // System.out.println(newInfo);
+      this.agencyBounds = newBounds;
+      this.refreshAgencyDetails();
+    });
 
   @SwimLane("updateAgencyInfo")
   public CommandLane<Value> updateAgencyInfoCommand = this.<Value>commandLane()
@@ -107,6 +116,11 @@ public class AgencyAgent extends AbstractAgent {
    */
   @Override
   public void didStart() {
+     this.agencyBounds = Record.create()
+          .slot("minLat", 0d)
+          .slot("maxLat", 0d)
+          .slot("minLong", 0d)
+          .slot("maxLong", 0d);
     System.out.println("Agency Agent Started: ");
   }
 
@@ -141,7 +155,8 @@ public class AgencyAgent extends AbstractAgent {
   private void refreshAgencyDetails() {
     final Record newDetails = Record.create()
       .slot("routeCount", this.routeList.size())
-      .slot("vehicleCount", this.vehicleList.size());
+      .slot("vehicleCount", this.vehicleList.size())
+      .slot("agencyBounds", this.agencyBounds);
 
     this.agencyDetails.set(newDetails);
   }
