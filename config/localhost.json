@@ -1,0 +1,33 @@
+{
+    "appName": "Flight Tracker",
+    "autoStartSim": false,
+    "csvInFolder": "../rawData/in/",
+    "csvOutFolder": " ../rawData/out/",
+    "simLoopInterval": 10000,
+    "csvExportInterval": 10000,
+    "eventHub": {
+        "enabled": false,
+        "namespaceName": "Transit-Event-Hub",
+        "eventHubName": "countshub",
+        "sasKeyName": "RootManageSharedAccessKey",
+        "sasKey": "/YGVFRTPSZCFZguDN88R+CVk699UIa7Fl8akJc0npuk="
+    },
+    "map": {
+        "queryCenterPoint": [41.979246, -87.906914],
+        "uiCenterPoint": [35.260898, -116.687073],
+        "zoom": 10,
+        "queryOffset": 1
+    },
+    "csvFiles": {
+        "agencies": {
+            "enabled": true,
+            "fileIn": "agencies.csv",
+            "fileOut": "agencies.csv",
+            "columns": "tag,title,region",
+            "simInterval": 0,
+            "simType": "none",
+            "writeToCsv": false,
+            "laneUri": "/bridge/airports"
+        }
+    }
+}
