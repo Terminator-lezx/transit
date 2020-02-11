@@ -39,10 +39,40 @@ public class AgencyAgent extends AbstractAgent {
 
   @SwimLane("updateAgencyBounds")
   public CommandLane<Record> updateAgencyBoundsCommand = this.<Record>commandLane()
-    .onCommand((Record newBounds) -> {
-      // System.out.println(newInfo);
+    .onCommand((Record routeData) -> {
+      
+      Record newBounds = Record.create();
+        // .slot("minLat", this.agencyBounds.get("minLat").doubleValue(0d))
+        // .slot("maxLat", this.agencyBounds.get("maxLat").doubleValue(0d))
+        // .slot("minLong", this.agencyBounds.get("minLong").doubleValue(0d))
+        // .slot("maxLong", this.agencyBounds.get("maxLong").doubleValue(0d));
+
+
+      if(routeData.get("minLat").doubleValue() > this.agencyBounds.get("minLat").doubleValue() || newBounds.get("minLat") == Value.absent()) {
+        newBounds.slot("minLat", routeData.get("minLat").doubleValue());
+      }
+
+      if(routeData.get("maxLat").doubleValue() < this.agencyBounds.get("maxLat").doubleValue() || newBounds.get("maxLat") == Value.absent()) {
+        newBounds.slot("maxLat", routeData.get("maxLat").doubleValue());
+      }
+
+      if(routeData.get("minLong").doubleValue() > this.agencyBounds.get("minLong").doubleValue() || newBounds.get("minLong") == Value.absent()) {
+        newBounds.slot("minLong", routeData.get("minLong").doubleValue());
+      }
+
+      if(routeData.get("maxLong").doubleValue() < this.agencyBounds.get("maxLong").doubleValue() || newBounds.get("maxLong") == Value.absent()) {
+        newBounds.slot("maxLong", routeData.get("maxLong").doubleValue());
+      }      
+
+      // // this.agencyBounds = Record.create()
+      // //   .slot("minLat", 0d)
+      // //   .slot("maxLat", 0d)
+      // //   .slot("minLong", 0d)
+      // //   .slot("maxLong", 0d);      
+      // System.out.println(newBounds);
       this.agencyBounds = newBounds;
       this.refreshAgencyDetails();
+
     });
 
   @SwimLane("updateAgencyInfo")
@@ -71,9 +101,9 @@ public class AgencyAgent extends AbstractAgent {
         }
       }
       
-      System.out.print("Agency [" + this.tag.get().stringValue() + "] has "); 
-      System.out.print(this.vehicleList.size());
-      System.out.println(" Vehicles");
+      // System.out.print("Agency [" + this.tag.get().stringValue() + "] has "); 
+      // System.out.print(this.vehicleList.size());
+      // System.out.println(" Vehicles");
       this.refreshAgencyDetails();
 
     });

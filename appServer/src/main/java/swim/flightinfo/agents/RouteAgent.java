@@ -55,7 +55,7 @@ public class RouteAgent extends AbstractAgent {
 
         final Iterator<Item> routeIterator = routeDetails.iterator();
 
-        Record agencyBounds = Record.create();
+        
 
         while(routeIterator.hasNext()) {
           final Item xmlRowData = routeIterator.next();
@@ -93,31 +93,17 @@ public class RouteAgent extends AbstractAgent {
 
             this.routeDetails.set(details);
 
-// System.out.println(routeData);
-            if(routeData.get("latMin").doubleValue() > agencyBounds.get("minLat").doubleValue(-0d)) {
-              agencyBounds.slot("minLat", routeData.get("latMin").doubleValue(0d));
-            }
+            Record agencyBounds = Record.create()
+              .slot("minLat", routeData.get("latMin").doubleValue(0d))
+              .slot("maxLat", routeData.get("latMax").doubleValue(0d))
+              .slot("minLong", routeData.get("lonMin").doubleValue(0d))
+              .slot("maxLong", routeData.get("lonMax").doubleValue(0d));
 
-            if(routeData.get("latMax").doubleValue() > agencyBounds.get("maxLat").doubleValue(0d)) {
-              agencyBounds.slot("maxLat", routeData.get("latMax").doubleValue(0d));
-            }
-
-            if(routeData.get("lonMin").doubleValue() < agencyBounds.get("minLong").doubleValue(0d)) {
-              agencyBounds.slot("minLong", routeData.get("lonMin").doubleValue(0d));
-            }
-
-            if(routeData.get("lonMax").doubleValue() < agencyBounds.get("maxLong").doubleValue(0d)) {
-              agencyBounds.slot("maxLong", routeData.get("lonMax").doubleValue(0d));
-            }
-
-            
-            // System.out.print(routeData.get("latMin").doubleValue(0d));
-            // System.out.print("<");
-            // System.out.println(agencyBounds.get("minLat").doubleValue(0d));
+            command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/agency/" + this.agencyTag), Uri.parse("updateAgencyBounds"), agencyBounds);     
           }
         }
         // System.out.println(agencyBounds);
-        command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/agency/" + this.agencyTag), Uri.parse("updateAgencyBounds"), agencyBounds); 
+        
         // System.out.println("----------------- route data end -----------");
 
     });

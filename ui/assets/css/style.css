@@ -270,8 +270,9 @@
 
 .filterList {
   width: 40px;
-  overflow: hidden;
+  height: 100%;
   transition: all 150ms linear;
+  overflow: hidden;
 }
 
 .filterList li {
@@ -289,7 +290,7 @@
 
 .sideMenuOpen .filterList {
   width: 200px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .timestampContainer {

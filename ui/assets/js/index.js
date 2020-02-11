@@ -13,6 +13,12 @@ class IndexPage {
     links = {};
     agencies = {};
     vehicles = {};
+
+    routeList = {};
+    routePaths = {};
+    routeStops = {};
+
+    agencyListDirty = false;
     
     constructor(swimUrl, elementID, templateID) {
         console.info("[IndexPage]: constructor");
@@ -86,7 +92,7 @@ class IndexPage {
     getVehicles(agencyTag) {
         this.links["vehicleLocations"] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkValue().laneUri('vehicleList')
             .didSet((newValue, oldValue) => {
-                console.info(newValue);
+                // console.info(newValue);
                 // this.agencies[agencyTag].details = newValue;
                 // this.links["agencyDetail-" + agencyTag].close();
             })
@@ -99,9 +105,16 @@ class IndexPage {
             .didSet((newValue, oldValue) => {
                 this.agencies[agencyTag].details = newValue;
                 this.links["agencyDetail-" + agencyTag].close();
+                this.agencyListDirty = true;
             })
             .open();
     }
+
+    toggleMenu() {
+        const menuDiv = document.getElementById("b3a6b5bb");
+        menuDiv.className = (menuDiv.className === "sideMenuOpen") ? "sideMenu" : "sideMenuOpen";
+
+    }    
 
     start() {
         console.info("[IndexPage]: start");
@@ -179,20 +192,10 @@ class IndexPage {
         //     this.isNewTickRendered = true;
         // }
 
-        // if(this.onGroundPieDirty) {
-        //     this.updateOnGroundPie("onGround", this.onGroundCount);
-        //     this.updateOnGroundPie("inAir", this.inAirCount);
-        //     this.onGroundPieDirty = false;
-        // }
-        
-        // if(this.altitudePieDirty) {
-        //     for(let key in this.altitudePieValues) {
-        //         this.updateAltitudePie(swim.Value.fromAny(key), swim.Value.fromAny(this.altitudePieValues[key]));
-        //     }
-            
-        //     this.altitudePieDirty = false;
-        // }
-        
+        if (this.agencyListDirty) {
+            this.renderAgencyList();
+            this.agencyListDirty = false;
+        }
         // if(this.didMapMove) {
         //     this.updateMapBoundingBox();
         //     this.didMapMove = false;
@@ -223,6 +226,53 @@ class IndexPage {
         window.requestAnimationFrame(() => {
             this.render();
         })
+    }
+
+    renderAgencyList() {
+        const listContainer = this.rootSwimElement.getCachedElement("cfb9be55");
+        listContainer.node.innerHTML = "";
+        for(const agencyTag in this.agencies) {
+            const rowDiv = swim.HtmlView.create("div")
+            rowDiv.node.onclick = (clickEvent) => {
+                this.selectAgency(agencyTag);
+            }
+            rowDiv.text(agencyTag);
+            listContainer.append(rowDiv);
+
+            // console.info(agencyTag);
+        }
+    }
+
+    selectAgency(agencyTag) {
+        console.info(`Selected ${agencyTag}`);
+        const agencyData = this.agencies[agencyTag];
+        // const agencyDetails = agencyData.info.get("details"); 
+        document.getElementById("mainTitle").innerText = agencyData.info.get("title").stringValue();
+        // console.info(agencyData);
+        const agencyBounds = agencyData.details.get("agencyBounds");
+        // console.info(agencyBounds.get("minLong"));
+        var bbox = [
+            [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
+            [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
+
+        ];
+        console.info(bbox);
+        this.map.map.fitBounds(bbox, {
+          padding: {top: 10, bottom:25, left: 15, right: 5}
+        });        
+
+        if(this.links['routeList'] && this.links['routeList'].close) {
+            this.links['routeList'].close();
+        }
+
+        this.links["routeList"] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
+            .didUpdate((key, newValue) => {
+                console.info('routes', key, newValue);
+            })
+            .didSync(() => {
+                // this.links["routeList"].close();
+            })
+            .open();        
     }
 
     drawPoly(key, coords, weatherData = [], fillColor = swim.Color.rgb(255, 0, 0, 0.3), strokeColor = swim.Color.rgb(255, 0, 0, 0.8), strokeSize = 2) {
