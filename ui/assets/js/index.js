@@ -10,15 +10,17 @@ class IndexPage {
     overlay = null;
     map = null;
     userGuid = null;
+    selectedAgency = null;
+
     links = {};
     agencies = {};
     vehicles = {};
 
     routeList = {};
-    routePaths = {};
-    routeStops = {};
+    routePathPolys = [];
 
     agencyListDirty = false;
+    routeDirty = false;
     
     constructor(swimUrl, elementID, templateID) {
         console.info("[IndexPage]: constructor");
@@ -46,22 +48,6 @@ class IndexPage {
         this.loadTemplate(this.rootSwimTemplateId, this.rootSwimElement, this.start.bind(this), true);
 
 
-        // this.links["airportListLink"] = swim.nodeRef(this.swimUrl, '/userPrefs/' + this.userGuid).downlinkMap().laneUri('filteredAirportList')
-        //     // when an new item is added to the list, append it to listItems
-        //     .didUpdate((key, newValue) => {
-        //         // add new item to listItems
-        //         this.overlay.airportDataset[key.stringValue()] = newValue;
-        //         this.airportsDirty = true;
-        //     })
-        //     .didRemove((key, newValue) => {
-        //         const markerId = key.stringValue();
-        //         this.overlay.airportDataset[markerId].removed = true;
-        //         this.airportsDirty = true;
-        //     })
-        //     .didSync(() => {
-        //         this.airportsDirty = true;
-        //     });
-
         this.links["agencyList"] = swim.nodeRef(this.swimUrl, '/aggregation').downlinkMap().laneUri('agencies')
             // when an new item is added to the list, append it to listItems
             .didUpdate((key, newValue) => {
@@ -86,7 +72,7 @@ class IndexPage {
                 // window.requestAnimationFrame(this.drawAirplanes.bind(this));
             });
 
-        this.getVehicles("sf-muni");
+        // this.getVehicles("sf-muni");
     }
 
     getVehicles(agencyTag) {
@@ -119,6 +105,7 @@ class IndexPage {
     start() {
         console.info("[IndexPage]: start");
         this.map = this.rootSwimElement.getCachedElement("e55efe2c");
+        this.overlay = this.map.overlays['121246ec'];
         // this.pie1Div = this.rootSwimElement.getCachedElement("cec61646");
         // this.pie2Div = this.rootSwimElement.getCachedElement("c3ab4b07");
         // this.datagridDiv = this.rootSwimElement.getCachedElement("d5dbe551");
@@ -196,31 +183,36 @@ class IndexPage {
             this.renderAgencyList();
             this.agencyListDirty = false;
         }
-        // if(this.didMapMove) {
-        //     this.updateMapBoundingBox();
-        //     this.didMapMove = false;
-        // }
-        
-        // if(this.airportsDirty) {
-        //     this.drawAirports();
-        //     this.airportsDirty = false;
-        // }
 
-        // if(this.airplaneDataDirty) {
-        //     this.drawTracks();
-        //     this.drawAirplanes();
-        //     this.airplaneDataDirty = false;    
-        // }
+        if(this.selectedAgency != null && this.routeDirty) {
+            // const agencyData = page.routeList[this.selectedAgency];
+            for(const route in this.routeList) {
+                // console.info(route);
+                const routeData = this.routeList[route];
+                // console.log("keys" + Object.keys(routeData.paths).length);
+                const paths = routeData.paths;
+                // const stops = routeData.stops;
+                
+                for(const pathKey in paths) {
+                    const pathPoints = paths[pathKey];
+                    const fullPath = [];    
+                    pathPoints.forEach((thing) => {
+                        const point = thing.get("point");
+                        const newPoint = {
+                            "lat": point.get("lat").numberValue(),
+                            "lng": point.get("lon").numberValue()
+                        }
+                        fullPath.push(newPoint);
+                        // this.drawRoute(point);
+                        // console.info(point);
+                    })
+                    // console.info(fullPath);
+                    this.drawRoute(fullPath);
+                }
 
-        // if(this.weatherDirty) {
-        //     this.drawWeather();
-        //     this.weatherDirty = false;
-        // }
-
-        // if(this.uiFilterDirty) {
-        //     this.drawUiFilterList();
-        //     this.uiFilterDirty = false;
-        // }
+            }
+            this.routeDirty = false;
+        }
         
 
         window.requestAnimationFrame(() => {
@@ -245,18 +237,19 @@ class IndexPage {
 
     selectAgency(agencyTag) {
         console.info(`Selected ${agencyTag}`);
-        const agencyData = this.agencies[agencyTag];
-        // const agencyDetails = agencyData.info.get("details"); 
-        document.getElementById("mainTitle").innerText = agencyData.info.get("title").stringValue();
-        // console.info(agencyData);
-        const agencyBounds = agencyData.details.get("agencyBounds");
+        
+        this.selectedAgency = this.agencies[agencyTag];
+        // const agencyDetails = this.selectedAgency.info.get("details"); 
+        document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
+        // console.info(this.selectedAgency);
+        const agencyBounds = this.selectedAgency.details.get("agencyBounds");
         // console.info(agencyBounds.get("minLong"));
         var bbox = [
             [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
             [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
 
         ];
-        console.info(bbox);
+        // console.info(bbox);
         this.map.map.fitBounds(bbox, {
           padding: {top: 10, bottom:25, left: 15, right: 5}
         });        
@@ -267,11 +260,39 @@ class IndexPage {
 
         this.links["routeList"] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
             .didUpdate((key, newValue) => {
-                console.info('routes', key, newValue);
+                // console.info('route list', key, newValue);
+                this.routeList[key] = {
+                    info: newValue,
+                    paths: {},
+                    stops: {}
+                };
+                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkMap().laneUri('paths')
+                    .didUpdate((pathKey, pathValue) => {
+                        this.routeList[key].paths[pathKey.numberValue()] = pathValue;
+                    })
+                    .didSync(() => {
+                        // this.links["routeList"].close();
+                        this.routeDirty = true;
+                    })                    
+                    // .keepSynced(false)
+                    .open();
+                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkMap().laneUri('stops')
+                    .didUpdate((stopKey, stopValue) => {
+                        this.routeList[key].stops[stopKey] = stopValue;
+                    })
+                    .didSync(() => {
+                        // this.links["routeList"].close();
+                        this.routeDirty = true;
+                    })                    
+                    // .keepSynced(false)
+                    .open();
+
             })
             .didSync(() => {
                 // this.links["routeList"].close();
+                this.routeDirty = true;
             })
+            
             .open();        
     }
 
@@ -303,7 +324,7 @@ class IndexPage {
     }
 
     drawTrackLine(trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
-        const currPolys = this.overlay.trackMarkers.length;
+        const currPolys = this.routePathPolys.length;
         const tempMarker = new swim.MapPolygonView();
         tempMarker.setCoords(trackPoints);
         tempMarker.stroke(strokeColor);
@@ -313,7 +334,7 @@ class IndexPage {
 
         this.overlay.setChildView('track', tempMarker);
 
-        this.overlay.trackMarkers[currPolys] = tempMarker;
+        this.routePathPolys.push(tempMarker);
 
     }
 
@@ -338,12 +359,13 @@ class IndexPage {
 
     }
 
-    drawTracks() {
+    drawRoute(routePoints) {
         const trackList = [];
-        const trackKeys = Object.keys(this.overlay.trackDataset);
+        // const trackKeys = Object.keys(routePoints);
 
-        for (let i = 0; i < trackKeys.length; i++) {
-            const currTrackPoint = this.overlay.trackDataset[trackKeys[i]];
+        for (let i = 0; i < routePoints.length; i++) {
+            const currTrackPoint = routePoints[i];
+            trackList.push(currTrackPoint);
             const currCoords = this.checkBounds(currTrackPoint, this.mapBoundingBox);
             if(currCoords[2]) {
                 const newCoord = { "lng": currCoords[1], "lat": currCoords[0] };
@@ -351,8 +373,8 @@ class IndexPage {
                 trackList.push(newCoord);
             }
         }
-        for (let i = (trackKeys.length - 1); i >= 0; i--) {
-            const currTrackPoint = this.overlay.trackDataset[trackKeys[i]];
+        for (let i = (routePoints.length - 1); i >= 0; i--) {
+            const currTrackPoint = routePoints[i];
             const currCoords = this.checkBounds(currTrackPoint, this.mapBoundingBox);
             if(currCoords[2]) {
                 const newCoord = { "lng": currCoords[1], "lat": currCoords[0] };
@@ -361,7 +383,10 @@ class IndexPage {
             }
         }
 
-        this.drawTrackLine(trackList);
+        if(trackList) {
+            this.drawTrackLine(trackList);
+        }
+        
     }
 
     clearTracks() {
@@ -408,27 +433,27 @@ class IndexPage {
     }
 
     checkBounds = (currTrackPoint, boundingBox) => {
-        let currLong = currTrackPoint.get("lng").numberValue();
-        let currLat = currTrackPoint.get("lat").numberValue();
+        let currLong = currTrackPoint.lng;
+        let currLat = currTrackPoint.lat;
         let inBounds = true;
 
         if(currLat > boundingBox[0].lat) {
-            inBounds = false;
+            // inBounds = false;
             currLat = boundingBox[0].lat;
         }
 
         if(currLat < boundingBox[1].lat) {
-            inBounds = false;
+            // inBounds = false;
             currLat = boundingBox[1].lat;
         }
 
         if(currLong < boundingBox[0].lng) {
-            inBounds = false;
+            // inBounds = false;
             currLong = boundingBox[0].lng;
         }
 
         if(currLong > boundingBox[1].lng) {
-            inBounds = false;
+            // inBounds = false;
             currLong = boundingBox[1].lng;
         }        
         

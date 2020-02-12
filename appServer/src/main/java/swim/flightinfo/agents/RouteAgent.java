@@ -53,28 +53,61 @@ public class RouteAgent extends AbstractAgent {
     .onCommand((Record routeDetails) -> {
         // System.out.println("----------------- route data start -----------");
 
-        final Iterator<Item> routeIterator = routeDetails.iterator();
+        final Iterator<Item> xmlIterator = routeDetails.iterator();
 
-        
-
-        while(routeIterator.hasNext()) {
-          final Item xmlRowData = routeIterator.next();
+        while(xmlIterator.hasNext()) {
+          final Item xmlRowData = xmlIterator.next();
           final Value routeData = xmlRowData.getAttr("route");      
+
           if (routeData.isDefined()) {
-            
+            // System.out.println("----------------- route data defined ---------------------");
+            // System.out.println(routeData);
             // try to find stops and paths
             final Iterator<Item> stopIterator = xmlRowData.iterator();
+            
             while(stopIterator.hasNext()) {
-                final Item stopItem = stopIterator.next();
-                final Value stopData = stopItem.getAttr("stop");
-                final Value pathData = stopItem.tail();
-                if(stopData.isDefined()) {
+              final Item stopItem = stopIterator.next();
+              String rowTag = stopItem.tag();
+              if(rowTag != null) {
+                switch(rowTag) {
+                  case "stop":
+                    final Value stopData = stopItem.getAttr("stop");
                     this.stops.put(stopData.get("tag").stringValue(), stopData);
+                    break;
+
+                  case "direction":
+                    // System.out.println("direction");
+                    break;
+
+                  case "path":
+                    final Value pathData = stopItem.tail();
+                    final Iterator<Item> pathIterator = pathData.iterator();
+                    final Record points = Record.create();
+                    while(pathIterator.hasNext()) {
+                      final Item path = pathIterator.next();
+                      if(path.tag() != null) {
+                        points.add(path);
+                      }
+                    }
+                    
+                    this.paths.put(this.paths.size(), points);
+                    break;
+
                 }
-                if(pathData.isDefined()) {
-                    this.paths.put(this.paths.size(), pathData);
-                }                
+                // final Value stopData = stopItem.getAttr("stop");
+                // final Value pathData = stopItem.hasAttr("path");
+                // System.out.println(this.routeUid + ":" + stopItem.tag());
+                // if(stopData.isDefined()) {
+                //   // System.out.println(stopData);
+                //   this.stops.put(stopData.get("tag").stringValue(), stopData);
+                // } 
+                // if(pathData.isDefined()) {
+                //   System.out.println(pathData);
+                //     // this.paths.put(this.paths.size(), pathData);
+                // }                
+              }
             }
+            
 
             // set detail info
             final Record details = Record.create()
@@ -100,7 +133,7 @@ public class RouteAgent extends AbstractAgent {
               .slot("maxLong", routeData.get("lonMax").doubleValue(0d));
 
             command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/agency/" + this.agencyTag), Uri.parse("updateAgencyBounds"), agencyBounds);     
-          }
+          } 
         }
         // System.out.println(agencyBounds);
         
