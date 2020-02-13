@@ -48,19 +48,19 @@ public class AgencyAgent extends AbstractAgent {
         // .slot("maxLong", this.agencyBounds.get("maxLong").doubleValue(0d));
 
 
-      if(routeData.get("minLat").doubleValue() > this.agencyBounds.get("minLat").doubleValue() || newBounds.get("minLat") == Value.absent()) {
+      if(routeData.get("minLat").doubleValue() < this.agencyBounds.get("minLat").doubleValue() || newBounds.get("minLat") == Value.absent()) {
         newBounds.slot("minLat", routeData.get("minLat").doubleValue());
       }
 
-      if(routeData.get("maxLat").doubleValue() < this.agencyBounds.get("maxLat").doubleValue() || newBounds.get("maxLat") == Value.absent()) {
+      if(routeData.get("maxLat").doubleValue() > this.agencyBounds.get("maxLat").doubleValue() || newBounds.get("maxLat") == Value.absent()) {
         newBounds.slot("maxLat", routeData.get("maxLat").doubleValue());
       }
 
-      if(routeData.get("minLong").doubleValue() > this.agencyBounds.get("minLong").doubleValue() || newBounds.get("minLong") == Value.absent()) {
+      if(routeData.get("minLong").doubleValue() < this.agencyBounds.get("minLong").doubleValue() || newBounds.get("minLong") == Value.absent()) {
         newBounds.slot("minLong", routeData.get("minLong").doubleValue());
       }
 
-      if(routeData.get("maxLong").doubleValue() < this.agencyBounds.get("maxLong").doubleValue() || newBounds.get("maxLong") == Value.absent()) {
+      if(routeData.get("maxLong").doubleValue() > this.agencyBounds.get("maxLong").doubleValue() || newBounds.get("maxLong") == Value.absent()) {
         newBounds.slot("maxLong", routeData.get("maxLong").doubleValue());
       }      
 

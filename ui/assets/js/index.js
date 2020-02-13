@@ -189,29 +189,33 @@ class IndexPage {
             for(const route in this.routeList) {
                 // console.info(route);
                 const routeData = this.routeList[route];
-                // console.log("keys" + Object.keys(routeData.paths).length);
-                const paths = routeData.paths;
-                // const stops = routeData.stops;
-                
-                for(const pathKey in paths) {
-                    const pathPoints = paths[pathKey];
-                    const fullPath = [];    
-                    pathPoints.forEach((thing) => {
-                        const point = thing.get("point");
-                        const newPoint = {
-                            "lat": point.get("lat").numberValue(),
-                            "lng": point.get("lon").numberValue()
-                        }
-                        fullPath.push(newPoint);
-                        // this.drawRoute(point);
-                        // console.info(point);
-                    })
-                    // console.info(fullPath);
-                    this.drawRoute(fullPath);
+                const routeDetails = routeData.details;
+                if(routeDetails != null) {
+                    const paths = routeData.paths;
+                    const pathColor = swim.Color.parse(`#${routeDetails.get("color").stringValue()}`);
+                    // const stops = routeData.stops;
+                    
+                    for(const pathKey in paths) {
+                        const pathPoints = paths[pathKey];
+                        const fullPath = [];    
+                        pathPoints.forEach((thing) => {
+                            const point = thing.get("point");
+                            const newPoint = {
+                                "lat": point.get("lat").numberValue(),
+                                "lng": point.get("lon").numberValue()
+                            }
+                            fullPath.push(newPoint);
+                            // this.drawRoute(point);
+                            // console.info(point);
+                        })
+                        // console.info(fullPath);
+                        this.drawRoute(pathKey, fullPath, pathColor);
+                    }
+                    this.routeDirty = false;
                 }
 
             }
-            this.routeDirty = false;
+            
         }
         
 
@@ -243,16 +247,14 @@ class IndexPage {
         document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
         // console.info(this.selectedAgency);
         const agencyBounds = this.selectedAgency.details.get("agencyBounds");
-        // console.info(agencyBounds.get("minLong"));
+        console.info(agencyBounds.get("maxLong").numberValue() - agencyBounds.get("minLong").numberValue());
         var bbox = [
             [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
             [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
 
         ];
         // console.info(bbox);
-        this.map.map.fitBounds(bbox, {
-          padding: {top: 10, bottom:25, left: 15, right: 5}
-        });        
+        this.map.map.fitBounds(bbox);        
 
         if(this.links['routeList'] && this.links['routeList'].close) {
             this.links['routeList'].close();
@@ -263,9 +265,20 @@ class IndexPage {
                 // console.info('route list', key, newValue);
                 this.routeList[key] = {
                     info: newValue,
+                    details: null,
                     paths: {},
                     stops: {}
                 };
+                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkValue().laneUri('routeDetails')
+                    .didSet((newValue) => {
+                        this.routeList[key].details = newValue;
+                    })
+                    .didSync(() => {
+                        // this.links["routeList"].close();
+                        // this.routeDirty = true;
+                    })                    
+                    // .keepSynced(false)
+                    .open();                
                 swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkMap().laneUri('paths')
                     .didUpdate((pathKey, pathValue) => {
                         this.routeList[key].paths[pathKey.numberValue()] = pathValue;
@@ -282,7 +295,7 @@ class IndexPage {
                     })
                     .didSync(() => {
                         // this.links["routeList"].close();
-                        this.routeDirty = true;
+                        // this.routeDirty = true;
                     })                    
                     // .keepSynced(false)
                     .open();
@@ -323,7 +336,7 @@ class IndexPage {
         // console.info('test poly drawn');
     }
 
-    drawTrackLine(trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
+    drawTrackLine(routeId, trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
         const currPolys = this.routePathPolys.length;
         const tempMarker = new swim.MapPolygonView();
         tempMarker.setCoords(trackPoints);
@@ -331,10 +344,13 @@ class IndexPage {
         // tempMarker.fill(strokeColor);
         tempMarker.strokeWidth(2);
 
+        if(this.overlay.getChildView(routeId) === null){
+            this.overlay.setChildView(routeId, tempMarker);
 
-        this.overlay.setChildView('track', tempMarker);
+            this.routePathPolys.push(tempMarker);
+    
+        }
 
-        this.routePathPolys.push(tempMarker);
 
     }
 
@@ -359,7 +375,7 @@ class IndexPage {
 
     }
 
-    drawRoute(routePoints) {
+    drawRoute(routeId, routePoints, routeColor) {
         const trackList = [];
         // const trackKeys = Object.keys(routePoints);
 
@@ -384,7 +400,7 @@ class IndexPage {
         }
 
         if(trackList) {
-            this.drawTrackLine(trackList);
+            this.drawTrackLine(routeId, trackList, routeColor);
         }
         
     }
