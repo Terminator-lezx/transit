@@ -20,9 +20,12 @@ class IndexPage {
 
     routeListDiv = null;
     routeCountDiv = null;
-    routeList = {};
+    routeList = [];
     routePathPolys = [];
     routeStopMarkers = [];
+
+    vehicleList = [];
+    vehicleMarkers = [];
 
     agencyListDirty = false;
     routeDirty = false;
@@ -278,6 +281,15 @@ class IndexPage {
             
         }
 
+        //draw agency vehicles
+        if(this.vehicleListDirty) {
+            for(const vehicle in this.vehicleList) {
+                // console.info(vehicle);
+                this.renderVehicle(this.vehicleList[vehicle]);
+            }
+            this.vehicleListDirty = false;
+        }
+
         window.requestAnimationFrame(() => {
             this.render();
         })
@@ -298,8 +310,31 @@ class IndexPage {
         }
     }
 
+    renderVehicle(vehicleData) {
+        // console.info(vehicleData);
+        let routeId = this.selectedAgency.tag + "-" + vehicleData.get("routeTag").stringValue("deadbeef");
+        let route = this.routeList[routeId]; 
+        let newRgb = swim.Color.rgb(255,255,255);
+        if(route && route.details) {
+            newRgb = swim.Color.parse(`#${route.details.get("color").stringValue("ffffff")}`);
+        }
+        let markerFillColor = newRgb.alpha(0.75);
+        let markerStrokeColor = newRgb.alpha(0.95);
+        let markerId = vehicleData.get("id").stringValue("deadbeef");
+        let tempMarker = new swim.MapCircleView()
+            // .center([newLat, newLng])
+            .center([vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)])
+            // .center(mapboxgl.LngLat.convert([newLng, newLat]))
+            .radius(4)
+            .fill(markerFillColor)
+            .stroke(markerStrokeColor)
+            .strokeWidth(1);        
+
+        this.overlay.setChildView(markerId, tempMarker);
+        this.vehicleMarkers[markerId] = tempMarker;            
+    }
+
     renderBusStop(stopData, pathColor) {
-        console.info("stopData: ", stopData);
         let markerFillColor = pathColor.alpha(0.1);//newRgb.alpha(0.75);
         let markerStrokeColor = pathColor; //newRgb.alpha(0.95);
         let markerId = stopData.get("stopId").stringValue("deadbeef");
@@ -345,7 +380,7 @@ class IndexPage {
         this.selectedAgency = this.agencies[agencyTag];
         this.selectedRoute = null;
         this.routeList = [];
-
+        this.vehicleList = [];
         // update page title
         document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
 
@@ -384,9 +419,22 @@ class IndexPage {
                 this.agencyChanged = true;
                 this.routeDirty = true;
                 routeLink.close();
-            })
-            
+            })            
             .open();        
+
+        // get all vehicle data for selected agency
+        const vehicleLink = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('vehicleList')
+            .didUpdate((key, newValue) => {
+                // console.info("vehicle:", key.stringValue(), newValue);
+                this.vehicleList[key.stringValue()] = newValue;
+                this.vehicleListDirty = true;
+            })
+            .didSync(() => {
+                this.agencyChanged = true;
+                this.vehicleListDirty = true;
+                // vehicleLink.close();
+            })            
+            .open(); 
     }
 
     selectRoute(routeId) {

@@ -21,6 +21,7 @@ public class AgencyAgent extends AbstractAgent {
 
   private String routeUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a=";
   private Record agencyBounds;
+  private TimerRef vehicleRefreshTimer;
 
   @SwimLane("tag")
   protected ValueLane<Value> tag;
@@ -83,12 +84,13 @@ public class AgencyAgent extends AbstractAgent {
       this.agencyInfo.set(newInfo);
       this.getRouteList();
       this.getVehicleList();
+      
     });
 
   @SwimLane("updateVehicleList")
   public CommandLane<Record> updateVehicleListCommand = this.<Record>commandLane()
     .onCommand((Record vehicleList) -> {
-      System.out.print("New vehicles: ");
+      // System.out.print("New vehicles: ");
       // System.out.println(vehicleList);
 
       final Iterator<Item> vehicleIterator = vehicleList.iterator();
@@ -105,7 +107,7 @@ public class AgencyAgent extends AbstractAgent {
       // System.out.print(this.vehicleList.size());
       // System.out.println(" Vehicles");
       this.refreshAgencyDetails();
-
+      this.startVehicleRefreshTimer();
     });
 
   @SwimLane("updateRouteList")
@@ -190,4 +192,15 @@ public class AgencyAgent extends AbstractAgent {
 
     this.agencyDetails.set(newDetails);
   }
+
+  /**
+    Method which creates the data purge timer
+   */
+  private void startVehicleRefreshTimer() {
+    if(this.vehicleRefreshTimer != null && this.vehicleRefreshTimer.isScheduled()) {
+      this.vehicleRefreshTimer.cancel();
+    }
+
+    this.vehicleRefreshTimer = setTimer(1000, this::getVehicleList);
+  }   
 }
