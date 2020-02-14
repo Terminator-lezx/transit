@@ -11,16 +11,22 @@ class IndexPage {
     map = null;
     userGuid = null;
     selectedAgency = null;
+    agencyChanged = false;
+    currentSimTime = new Date(0);
 
     links = {};
     agencies = {};
     vehicles = {};
 
+    routeListDiv = null;
+    routeCountDiv = null;
     routeList = {};
     routePathPolys = [];
+    routeStopMarkers = [];
 
     agencyListDirty = false;
     routeDirty = false;
+    stopsDirty = false;
     
     constructor(swimUrl, elementID, templateID) {
         console.info("[IndexPage]: constructor");
@@ -45,7 +51,7 @@ class IndexPage {
         swim.command(this.swimUrl, "/userPrefs/" + this.userGuid, "setGuid", this.userGuid);
         this.rootHtmlElement = document.getElementById(this.rootHtmlElementId);
         this.rootSwimElement = swim.HtmlView.fromNode(this.rootHtmlElement);
-        this.loadTemplate(this.rootSwimTemplateId, this.rootSwimElement, this.start.bind(this), true);
+        this.loadTemplate(this.rootSwimTemplateId, this.rootSwimElement, this.start.bind(this));
 
 
         this.links["agencyList"] = swim.nodeRef(this.swimUrl, '/aggregation').downlinkMap().laneUri('agencies')
@@ -59,11 +65,6 @@ class IndexPage {
                     details: null
                 };
                 this.getAgencyDetails(agencyTag);
-                // add new item to listItems
-                // const markerId = key.stringValue();
-                // this.overlay.airplaneDataset[markerId] = newValue;
-                // this.overlay.airplaneDataset[markerId].dirty = true;
-                // this.airplaneDataDirty = true;
             })
             .didSync(() => {
                 // console.info('synced')
@@ -72,7 +73,31 @@ class IndexPage {
                 // window.requestAnimationFrame(this.drawAirplanes.bind(this));
             });
 
-        // this.getVehicles("sf-muni");
+
+        this.links["appConfigLink"] = swim.nodeRef(this.swimUrl, '/aggregation').downlinkValue().laneUri('appConfig')
+            .didSet((newValue) => {
+                if (newValue !== swim.Value.absent()) {
+                    this.appConfig = newValue.toObject();
+                    document.getElementById("mainTitle").innerText = this.appConfig.appName;
+                    document.title = "Swim - " + this.appConfig.appName;
+                    // console.info("[Index] app config updated", this.appConfig);
+                    swim.command(this.swimUrl, "/userPrefs/" + this.userGuid, "setGuid", this.userGuid);
+                }
+            });
+
+        this.links["simTimeLink"] = swim.nodeRef(this.swimUrl, '/aggregation').downlinkValue().laneUri('currentSimTime')
+            .didSet((key, newValue) => {
+                this.currentSimTime = new Date(newValue.value).toLocaleString('en-US', { timeZone: 'America/Chicago' });
+                this.displayedTimeDirty = true;
+
+            });
+
+        this.links["simTickLink"] = swim.nodeRef(this.swimUrl, '/aggregation').downlinkValue().laneUri('currentSimTicks')
+            .didSet((newValue) => {
+                this.currentSimTicks = newValue;
+                this.isNewTickRendered = false;
+
+            });            
     }
 
     getVehicles(agencyTag) {
@@ -106,7 +131,9 @@ class IndexPage {
         console.info("[IndexPage]: start");
         this.map = this.rootSwimElement.getCachedElement("e55efe2c");
         this.overlay = this.map.overlays['121246ec'];
-        // this.pie1Div = this.rootSwimElement.getCachedElement("cec61646");
+        this.routeListDiv = this.rootSwimElement.getCachedElement("cec61646");
+        this.routeCountDiv = this.rootSwimElement.getCachedElement("1a6cff34");
+        
         // this.pie2Div = this.rootSwimElement.getCachedElement("c3ab4b07");
         // this.datagridDiv = this.rootSwimElement.getCachedElement("d5dbe551");
         // const menuDivButton = document.getElementById("9567a26b");
@@ -128,13 +155,13 @@ class IndexPage {
 
         this.map.map.on("zoomend", () => {
             this.didMapMove = true;
-            this.airplaneDataDirty = true;
+            this.updateMapBoundingBox();
             // console.info(this.map.map)
         });
 
         this.map.map.on("moveend", () => {
             this.didMapMove = true;
-            this.airplaneDataDirty = true;
+            this.updateMapBoundingBox();
         });
 
         window.requestAnimationFrame(() => {
@@ -146,7 +173,7 @@ class IndexPage {
 
     render() {
 
-        // // update displayed time
+        // update displayed time
         // if(this.displayedTimeDirty) {
         //     let timestampDiv = this.rootSwimElement.getCachedElement("c0ebccfc");
         //     if (this.currentSimTime !== "Invalid Date") {
@@ -162,7 +189,7 @@ class IndexPage {
         //     const progressBarContainer = this.rootSwimElement.getCachedElement("e5bdb7f9");
         //     const progressBar = this.rootSwimElement.getCachedElement("3e5db015");
         //     const liveBar = this.rootSwimElement.getCachedElement("93c39404");
-        //     const apiQueryEnabled = this.currentSimTicks.get("apiQueryEnabled").booleanValue(false);
+        //     const apiQueryEnabled = false;//this.currentSimTicks.get("apiQueryEnabled").booleanValue(false);
         //     console.info("[Index] simTickLink", apiQueryEnabled);
         //     if(apiQueryEnabled) {
         //         progressBarContainer.display("none");
@@ -179,45 +206,77 @@ class IndexPage {
         //     this.isNewTickRendered = true;
         // }
 
+        // render agency list
         if (this.agencyListDirty) {
             this.renderAgencyList();
             this.agencyListDirty = false;
         }
 
-        if(this.selectedAgency != null && this.routeDirty) {
-            // const agencyData = page.routeList[this.selectedAgency];
+        // render route listing for selected agency (if any)
+        if(this.selectAgency && this.agencyChanged) {
+            console.info("render route list", this.routeList);
+            this.routeListDiv.node.innerHTML = "";
+            this.routeCountDiv.node.innerHTML = Object.keys(page.routeList).length;
             for(const route in this.routeList) {
-                // console.info(route);
                 const routeData = this.routeList[route];
-                const routeDetails = routeData.details;
-                if(routeDetails != null) {
-                    const paths = routeData.paths;
-                    const pathColor = swim.Color.parse(`#${routeDetails.get("color").stringValue()}`);
-                    // const stops = routeData.stops;
+                const routeDiv = swim.HtmlView.create("div");
+                console.info("route", routeData.info.stringValue());
+                routeDiv.node.innerHTML = routeData.info.stringValue();
+                routeDiv.on("click", (evt) => {
+                    this.selectRoute(route);
+                });
+                this.routeListDiv.append(routeDiv);
+            }
+            this.agencyChanged = false;
+        }
+
+        // draw route line and stops if needed
+        if(this.selectedAgency && this.selectedRoute && (this.routeDirty || this.stopsDirty)) {
+            const routeData = this.routeList[this.selectedRoute];
+            if(!routeData) {
+                return;
+            }
+            const routeDetails = routeData.details;
+            if(routeDetails != null) {
+
+                // center map on route
+                var bbox = [
+                    [routeDetails.get("minLong").numberValue(), routeDetails.get("minLat").numberValue()],
+                    [routeDetails.get("maxLong").numberValue(), routeDetails.get("maxLat").numberValue()]
+        
+                ];
+                this.map.map.fitBounds(bbox, {padding: 200});                     
+
+                // get the route line color
+                let pathColor = swim.Color.parse(`#${routeDetails.get("color").stringValue()}`);
+                // don't allow black lines
+                const black = swim.Color.rgb("#000000");
+                const altColor = swim.Color.rgb("#00ff00");
+                if(pathColor.equals(black)) {
+                    pathColor = altColor; 
+                }
+
+                // draw route lines
+                if(this.routeDirty) {
                     
-                    for(const pathKey in paths) {
-                        const pathPoints = paths[pathKey];
-                        const fullPath = [];    
-                        pathPoints.forEach((thing) => {
-                            const point = thing.get("point");
-                            const newPoint = {
-                                "lat": point.get("lat").numberValue(),
-                                "lng": point.get("lon").numberValue()
-                            }
-                            fullPath.push(newPoint);
-                            // this.drawRoute(point);
-                            // console.info(point);
-                        })
-                        // console.info(fullPath);
-                        this.drawRoute(pathKey, fullPath, pathColor);
-                    }
+                    this.renderBusRoute(routeData.paths, pathColor);
                     this.routeDirty = false;
+                }
+
+                // draw stops
+                if(this.stopsDirty) {
+                    const stops = routeData.stops;
+                    // console.info(stops);
+                    for(const stop in stops) {
+                        
+                        this.renderBusStop(stops[stop], pathColor);
+                    }
+                    this.stopsDirty = false;
                 }
 
             }
             
         }
-        
 
         window.requestAnimationFrame(() => {
             this.render();
@@ -239,28 +298,68 @@ class IndexPage {
         }
     }
 
+    renderBusStop(stopData, pathColor) {
+        console.info("stopData: ", stopData);
+        let markerFillColor = pathColor.alpha(0.1);//newRgb.alpha(0.75);
+        let markerStrokeColor = pathColor; //newRgb.alpha(0.95);
+        let markerId = stopData.get("stopId").stringValue("deadbeef");
+        let tempMarker = new swim.MapCircleView()
+            // .center([newLat, newLng])
+            .center([stopData.get("lon").numberValue(0), stopData.get("lat").numberValue(0)])
+            // .center(mapboxgl.LngLat.convert([newLng, newLat]))
+            .radius(8)
+            .fill(markerFillColor)
+            .stroke(markerStrokeColor)
+            .strokeWidth(1);        
+
+        this.overlay.setChildView(markerId, tempMarker);
+        this.routeStopMarkers[markerId] = tempMarker;            
+    }
+
+    renderBusRoute(paths, pathColor) {
+        
+        // draw the points for each path segment
+        for(const pathKey in paths) {
+            const pathPoints = paths[pathKey];
+            const fullPath = [];    
+
+            // build path point array
+            pathPoints.forEach((thing) => {
+                const point = thing.get("point");
+                const newPoint = {
+                    "lat": point.get("lat").numberValue(),
+                    "lng": point.get("lon").numberValue()
+                }
+                fullPath.push(newPoint);
+            });
+
+            // draw the line
+            this.drawTrackLine(pathKey, fullPath.concat(fullPath.slice().reverse()), pathColor);
+        }
+    }
+
     selectAgency(agencyTag) {
         console.info(`Selected ${agencyTag}`);
-        
+        this.clearTracks();
+        this.clearStopMarkers();
         this.selectedAgency = this.agencies[agencyTag];
-        // const agencyDetails = this.selectedAgency.info.get("details"); 
+        this.selectedRoute = null;
+        this.routeList = [];
+
+        // update page title
         document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
-        // console.info(this.selectedAgency);
+
+        // center map on agency area
         const agencyBounds = this.selectedAgency.details.get("agencyBounds");
-        console.info(agencyBounds.get("maxLong").numberValue() - agencyBounds.get("minLong").numberValue());
         var bbox = [
             [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
             [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
 
         ];
-        // console.info(bbox);
-        this.map.map.fitBounds(bbox);        
+        this.map.map.fitBounds(bbox, {padding: 200});        
 
-        if(this.links['routeList'] && this.links['routeList'].close) {
-            this.links['routeList'].close();
-        }
-
-        this.links["routeList"] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
+        // get all route data for selected agency
+        const routeLink = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
             .didUpdate((key, newValue) => {
                 // console.info('route list', key, newValue);
                 this.routeList[key] = {
@@ -269,71 +368,56 @@ class IndexPage {
                     paths: {},
                     stops: {}
                 };
-                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkValue().laneUri('routeDetails')
+                // make call to get route detail data from routeDetails lane
+                const detailsLink = swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkValue().laneUri('routeDetails')
                     .didSet((newValue) => {
                         this.routeList[key].details = newValue;
                     })
                     .didSync(() => {
-                        // this.links["routeList"].close();
-                        // this.routeDirty = true;
+                        detailsLink.close();
                     })                    
-                    // .keepSynced(false)
                     .open();                
-                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkMap().laneUri('paths')
-                    .didUpdate((pathKey, pathValue) => {
-                        this.routeList[key].paths[pathKey.numberValue()] = pathValue;
-                    })
-                    .didSync(() => {
-                        // this.links["routeList"].close();
-                        this.routeDirty = true;
-                    })                    
-                    // .keepSynced(false)
-                    .open();
-                swim.nodeRef(this.swimUrl, '/routes/' + key).downlinkMap().laneUri('stops')
-                    .didUpdate((stopKey, stopValue) => {
-                        this.routeList[key].stops[stopKey] = stopValue;
-                    })
-                    .didSync(() => {
-                        // this.links["routeList"].close();
-                        // this.routeDirty = true;
-                    })                    
-                    // .keepSynced(false)
-                    .open();
 
             })
             .didSync(() => {
                 // this.links["routeList"].close();
+                this.agencyChanged = true;
                 this.routeDirty = true;
+                routeLink.close();
             })
             
             .open();        
     }
 
-    drawPoly(key, coords, weatherData = [], fillColor = swim.Color.rgb(255, 0, 0, 0.3), strokeColor = swim.Color.rgb(255, 0, 0, 0.8), strokeSize = 2) {
-
-        const geometryType = weatherData.get("geometry_type").stringValue().toLowerCase();
-        const currPolys = this.overlay.gairmetWeatherPolys.length;
-        const tempMarker = new swim.MapPolygonView()
-        tempMarker.setCoords(coords);
-        if (geometryType === "area") {
-            tempMarker.fill(fillColor);
-        }
-        tempMarker.stroke(strokeColor);
-        tempMarker.strokeWidth(strokeSize);
-
-
-        tempMarker.on("click", () => {
-            this.datagridDiv.node.innerHTML = "<h3>G-AIRMET</h3>";
-            weatherData.forEach((dataKey) => {
-                if (dataKey.key.value !== "points") {
-                    this.datagridDiv.node.innerHTML += `<div><span>${dataKey.key.value.replace("_", " ")}</span><span>${dataKey.value.value}</span></h3>`;
-                }
+    selectRoute(routeId) {
+        this.selectedRoute = routeId;
+        console.info(`selected route: ${this.selectedRoute}`);
+        this.clearTracks();
+        this.clearStopMarkers();
+        const routeData = this.routeList[this.selectedRoute];
+        this.routeDirty = true;
+        const pathLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkMap().laneUri('paths')
+            .didUpdate((pathKey, pathValue) => {
+                this.routeList[this.selectedRoute].paths[pathKey.numberValue()] = pathValue;
+                this.routeDirty = true;
             })
-        });
-        this.overlay.setChildView(key, tempMarker);
+            .didSync(() => {
+                this.routeDirty = true;
+                pathLink.close();
+            })                    
+            .open();
+        const stopsLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkMap().laneUri('stops')
+            .didUpdate((pathKey, pathValue) => {
+                // console.info(pathKey, pathValue)
+                this.routeList[this.selectedRoute].stops[pathKey.stringValue()] = pathValue;
+                this.stopsDirty = true;
+            })
+            .didSync(() => {
+                this.stopsDirty = true;
+                stopsLink.close();
+            })                    
+            .open();
 
-        this.overlay.gairmetWeatherPolys[currPolys] = tempMarker;
-        // console.info('test poly drawn');
     }
 
     drawTrackLine(routeId, trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
@@ -406,22 +490,31 @@ class IndexPage {
     }
 
     clearTracks() {
-        for (let trackKey in this.overlay.trackMarkers) {
-            if (this.overlay.trackMarkers[trackKey] !== null && this.overlay.trackMarkers[trackKey].parentView !== null) {
-                try {
-                    this.overlay.removeChildView(this.overlay.trackMarkers[trackKey]);
-                } catch (ex) {
-                    console.info('track parent not found', this.overlay.trackMarkers[trackKey]);
-                }
-
-            }
-
+        for (let trackKey in this.routePathPolys) {
+            this.removeMapElement(this.routePathPolys[trackKey]);
         }
-        this.overlay.trackMarkers = [];
-        this.overlay.trackDataset = [];
+        this.routePathPolys = [];
+        
     }
 
-    loadTemplate(templateId, swimElement, onTemplateLoad = null, keepSynced = true) {
+    clearStopMarkers() {
+        for(let markerKey in this.routeStopMarkers) {
+            this.removeMapElement(this.routeStopMarkers[markerKey]);
+        }
+    }
+
+    removeMapElement(mapElement) {
+        if (mapElement !== null && mapElement.parentView !== null) {
+            try {
+                this.overlay.removeChildView(mapElement);
+            } catch (ex) {
+                console.info('track parent not found', mapElement);
+            }
+
+        }        
+    }
+
+    loadTemplate(templateId, swimElement, onTemplateLoad = null, keepSynced = false) {
         console.info("[IndexPage]: load template");
         swimElement.render(templateId, () => {
             if (onTemplateLoad) {

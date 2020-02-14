@@ -1,5 +1,5 @@
 {
-    "appName": "Flight Tracker",
+    "appName": "NextBus Api Demo",
     "autoStartSim": false,
     "csvInFolder": "../rawData/in/",
     "csvOutFolder": " ../rawData/out/",

@@ -411,7 +411,7 @@
 }
 
 .pieHeader {
-  position: absolute;
+  /* position: absolute; */
   padding: 2px 7px 0px 7px;
   font-size: 16px;
   color: #9B9B9B;  
