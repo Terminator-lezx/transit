@@ -18,6 +18,8 @@ import java.util.Iterator;
 public class RouteAgent extends AbstractAgent {
 
   private String routeUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=routeConfig&a=";
+  private String scheduleUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=schedule&a=";
+
   private String routeUid;
   private String routeTag;
   private String agencyTag;
@@ -28,12 +30,31 @@ public class RouteAgent extends AbstractAgent {
   @SwimLane("routeDetails")
   protected ValueLane<Value> routeDetails;
 
+  @SwimLane("schedule")
+  protected ValueLane<Value> schedule;
+
   @SwimLane("stops")
   protected MapLane<String, Value> stops;
 
   @SwimLane("paths")
   protected MapLane<Integer, Value> paths;
 
+  @SwimLane("updateRouteSchedule")
+  public CommandLane<Value> updateRouteScheduleCommand = this.<Value>commandLane()
+    .onCommand((Value newData) -> {
+        final Iterator<Item> xmlIterator = newData.iterator();
+        
+        while(xmlIterator.hasNext()) {
+          final Item xmlRowData = xmlIterator.next();
+          final Value bodyData = xmlRowData.getAttr("body");      
+          System.out.println(xmlRowData.tail());
+          if (bodyData.isDefined()) {
+            System.out.println(bodyData);
+          }
+        }
+      
+      // this.schedule.set(newData);
+    });
 
   @SwimLane("updateRouteInfo")
   public CommandLane<Value> updateRouteInfoCommand = this.<Value>commandLane()
@@ -45,6 +66,7 @@ public class RouteAgent extends AbstractAgent {
         this.routeInfo.set(newInfo);
         // if(!this.agencyTag.equals("")) {
           this.getRouteDetails();
+          // this.getRouteSchedule();
         // }
     });
 
@@ -160,4 +182,17 @@ public class RouteAgent extends AbstractAgent {
     // send command to apiRequestAgent to fetch data
     command(Uri.parse("warp://127.0.0.1:9002"), Uri.parse("/apiRequestAgent/routeDetails"), Uri.parse("makeRequest"), apiRequestInfo);    
   }
+
+
+  private void getRouteSchedule() {
+    // create record which will tell apiRequestAgent where to get data and where to put the result
+    Record apiRequestInfo = Record.create()
+      .slot("targetHost", "warp://127.0.0.1:9001")
+      .slot("targetAgent", "/routes/" + this.routeUid)
+      .slot("targetLane", "updateRouteSchedule")
+      .slot("apiUrl", this.scheduleUrl + this.agencyTag + "&r=" + this.routeTag);
+
+    // send command to apiRequestAgent to fetch data
+    command(Uri.parse("warp://127.0.0.1:9002"), Uri.parse("/apiRequestAgent/routeSchedule"), Uri.parse("makeRequest"), apiRequestInfo);    
+  }  
 }

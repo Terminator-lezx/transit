@@ -30,6 +30,7 @@ class IndexPage {
     agencyListDirty = false;
     routeDirty = false;
     stopsDirty = false;
+    scheduleDirty = false;
     
     constructor(swimUrl, elementID, templateID) {
         console.info("[IndexPage]: constructor");
@@ -294,6 +295,17 @@ class IndexPage {
             this.render();
         })
     }
+    renderRouteSchedule() {
+        
+        const scheduleContainer = this.rootSwimElement.getCachedElement("d5dbe551");
+        scheduleContainer.node.innerHTML = "";
+        const routeData = this.routeList[this.selectedRoute];
+
+        if(routeData.schedule) {
+            scheduleContainer.node.innerHTML = routeData.schedule;
+        }
+
+    }
 
     renderAgencyList() {
         const listContainer = this.rootSwimElement.getCachedElement("cfb9be55");
@@ -465,7 +477,17 @@ class IndexPage {
                 stopsLink.close();
             })                    
             .open();
-
+        const scheduleLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkValue().laneUri('schedule')
+            .didSet((newValue) => {
+                console.info(newValue)
+                this.routeList[this.selectedRoute].schedule = newValue;
+                this.scheduleDirty = true;
+            })
+            .didSync(() => {
+                this.scheduleDirty = true;
+                scheduleLink.close();
+            })                    
+            .open();
     }
 
     drawTrackLine(routeId, trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
