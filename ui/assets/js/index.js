@@ -71,6 +71,7 @@ class IndexPage {
                 this.getAgencyDetails(agencyTag);
             })
             .didSync(() => {
+                this.links["agencyList"].close();
                 // console.info('synced')
                 // this.map.map.synced = true;
                 // this.airplaneDataDirty = true;
@@ -119,8 +120,11 @@ class IndexPage {
         this.links["agencyDetail-" + agencyTag] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkValue().laneUri('agencyDetails')
             .didSet((newValue, oldValue) => {
                 this.agencies[agencyTag].details = newValue;
-                this.links["agencyDetail-" + agencyTag].close();
+                // this.links["agencyDetail-" + agencyTag].close();
                 this.agencyListDirty = true;
+            })
+            .didSync(() => {
+                this.links["agencyDetail-" + agencyTag].close();
             })
             .open();
     }
@@ -166,6 +170,10 @@ class IndexPage {
         this.map.map.on("moveend", () => {
             this.didMapMove = true;
             this.updateMapBoundingBox();
+        });
+
+        this.map.map.on('style.load', () => {
+            this.drawBuilding()
         });
 
         window.requestAnimationFrame(() => {
@@ -421,7 +429,7 @@ class IndexPage {
                         this.routeList[key].details = newValue;
                     })
                     .didSync(() => {
-                        detailsLink.close();
+                        // detailsLink.close();
                     })                    
                     .open();                
 
@@ -430,12 +438,15 @@ class IndexPage {
                 // this.links["routeList"].close();
                 this.agencyChanged = true;
                 this.routeDirty = true;
-                routeLink.close();
+                // routeLink.close();
             })            
             .open();        
 
         // get all vehicle data for selected agency
-        const vehicleLink = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('vehicleList')
+        if(this.links["vehicleLink"]) {
+            this.links["vehicleLink"].close();
+        }
+        this.links["vehicleLink"] = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('vehicleList')
             .didUpdate((key, newValue) => {
                 // console.info("vehicle:", key.stringValue(), newValue);
                 this.vehicleList[key.stringValue()] = newValue;
@@ -463,7 +474,7 @@ class IndexPage {
             })
             .didSync(() => {
                 this.routeDirty = true;
-                pathLink.close();
+                // pathLink.close();
             })                    
             .open();
         const stopsLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkMap().laneUri('stops')
@@ -474,20 +485,20 @@ class IndexPage {
             })
             .didSync(() => {
                 this.stopsDirty = true;
-                stopsLink.close();
+                // stopsLink.close();
             })                    
             .open();
-        const scheduleLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkValue().laneUri('schedule')
-            .didSet((newValue) => {
-                console.info(newValue)
-                this.routeList[this.selectedRoute].schedule = newValue;
-                this.scheduleDirty = true;
-            })
-            .didSync(() => {
-                this.scheduleDirty = true;
-                scheduleLink.close();
-            })                    
-            .open();
+        // const scheduleLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkValue().laneUri('schedule')
+        //     .didSet((newValue) => {
+        //         console.info(newValue)
+        //         this.routeList[this.selectedRoute].schedule = newValue;
+        //         this.scheduleDirty = true;
+        //     })
+        //     .didSync(() => {
+        //         this.scheduleDirty = true;
+        //         scheduleLink.close();
+        //     })                    
+        //     .open();
     }
 
     drawTrackLine(routeId, trackPoints, strokeColor = swim.Color.rgb(108, 95, 206, 0.75)) {
@@ -637,5 +648,54 @@ class IndexPage {
         }        
         
         return [currLat, currLong, inBounds];
+    }    
+
+    drawBuilding() {
+        // Insert the layer beneath any symbol layer.
+        var layers = this.map.map.getStyle().layers;
+
+        var labelLayerId;
+        for (var i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+                labelLayerId = layers[i].id;
+                break;
+            }
+        }
+
+        this.map.map.addLayer({
+                'id': '3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 5,
+                'paint': {
+                    'fill-extrusion-color': '#aaa',
+
+                    // use an 'interpolate' expression to add a smooth transition effect to the
+                    // buildings as the user zooms in
+                    'fill-extrusion-height': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        15.05,
+                        ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.6
+                }
+            },
+            labelLayerId
+        );
     }    
 }

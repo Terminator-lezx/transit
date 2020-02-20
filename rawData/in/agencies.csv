@@ -1,6 +1,5 @@
 tag,title,region
 jhu-apl,APL,Maryland
-atlanta-sc,Atlanta Streetcar - Beta,Georgia
 bigbluebus,Big Blue Bus,California-Southern
 brockton,Brockton Area Transit Authority,Massachusetts
 ccrta,Cape Cod Regional Transit Authority,Massachusetts
@@ -28,7 +27,6 @@ lametro,Los Angeles Metro,California-Southern
 lametro-rail,Los Angeles Rail,California-Southern
 lincolnlab,MIT Lincoln Lab Shuttle,Massachusetts
 manteca-transit,Manteca Transit,California-Northern
-mit,Massachusetts Institute of Technology,Massachusetts
 ewr,Newark Liberty International Airport,New Jersey
 nova-se,Nova Southeastern University,Florida
 omnitrans,Omnitrans,California-Southern

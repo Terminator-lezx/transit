@@ -8,3 +8,5 @@ out
 server/ui
 dist/
 .lock
+.log
+.err

@@ -6,7 +6,7 @@
 # export SASKEY_NAME=RootManageSharedAccessKey
 # export SAS_KEY=/YGVFRTPSZCFZguDN88R+CVk699UIa7Fl8akJc0npuk=
 
-printf "Start Flight Info App\n"
+printf "Start Transit App Server\n"
 
 cd ./server
 ./gradlew run 
