@@ -386,7 +386,7 @@ swim.HtmlView.prototype.createMapElement = function (elementData) {
     //   newMap.setPitch((elementData.swimAttributes.pitch) ? elementData.swimAttributes.pitch : 45);
     //   newMap.setPitch((elementData.swimAttributes.zoom) ? elementData.swimAttributes.zoom : 10);
 
-    newMap.addControl(new mapboxgl.NavigationControl(), "top-left")
+    newMap.addControl(new mapboxgl.NavigationControl(), (elementData.swimAttributes.controlPlacment) ? elementData.swimAttributes.controlPlacment : "top-left")
         .getCanvasContainer().addEventListener("touchstart", function () {
             // prevent dragPan from interfering with touch scrolling
             newMap.dragPan.disable();

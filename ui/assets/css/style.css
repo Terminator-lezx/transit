@@ -95,7 +95,8 @@
 }
 
 .main-header {
-  position: relative;
+  position: absolute;
+  top: 0px;
   z-index: 10;
   height: 64px;
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.4);
@@ -305,7 +306,7 @@
 
 .timestampContainer {
   position: absolute;
-  top: 10px;
+  top: 70px;
   left: 50px;
   font-size: 18px;
   font-weight: 100;

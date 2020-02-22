@@ -31,6 +31,8 @@ class IndexPage {
     routeDirty = false;
     stopsDirty = false;
     scheduleDirty = false;
+    popoverView = null;
+    fastTween = swim.Transition.duration(100);
     
     constructor(swimUrl, elementID, templateID) {
         console.info("[IndexPage]: constructor");
@@ -175,6 +177,21 @@ class IndexPage {
         this.map.map.on('style.load', () => {
             this.drawBuilding()
         });
+
+        this.popoverView = new swim.PopoverView()
+            // .width(220)
+            // .height(220)
+            .borderRadius(5)
+            .padding(0)
+            .arrowHeight(20)
+            .arrowWidth(20)
+            .backgroundColor(swim.Color.parse("#071013").alpha(0.9))
+            .backdropFilter("blur(2px)");
+            
+        this.popoverContent = swim.HtmlView.create("div");
+        this.popoverContent.render("0509191f");
+        this.popoverView.append(this.popoverContent);
+        this.rootSwimElement.append(this.popoverView);
 
         window.requestAnimationFrame(() => {
             this.render();
@@ -331,6 +348,8 @@ class IndexPage {
     }
 
     renderVehicle(vehicleData) {
+        const tween = swim.Transition.duration(1000);
+        
         // console.info(vehicleData);
         let routeId = this.selectedAgency.tag + "-" + vehicleData.get("routeTag").stringValue("deadbeef");
         let route = this.routeList[routeId]; 
@@ -341,17 +360,58 @@ class IndexPage {
         let markerFillColor = newRgb.alpha(0.75);
         let markerStrokeColor = newRgb.alpha(0.95);
         let markerId = vehicleData.get("id").stringValue("deadbeef");
-        let tempMarker = new swim.MapCircleView()
-            // .center([newLat, newLng])
-            .center([vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)])
-            // .center(mapboxgl.LngLat.convert([newLng, newLat]))
-            .radius(4)
-            .fill(markerFillColor)
-            .stroke(markerStrokeColor)
-            .strokeWidth(1);        
 
-        this.overlay.setChildView(markerId, tempMarker);
-        this.vehicleMarkers[markerId] = tempMarker;            
+        if(!this.vehicleMarkers[markerId]) {
+            let tempMarker = new swim.MapCircleView()
+                .center([vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)])
+                .radius(6)
+                .fill(markerFillColor)
+                .stroke(markerStrokeColor)
+                .strokeWidth(1)
+                .on("click", (evt) => {
+                    console.info("bus clicked:" + vehicleData);
+                    this.popoverView.hidePopover(this.fastTween);          
+                    this.popoverView.setSource(tempMarker, {multi: event.altKey});            
+                    this.popoverView.showPopover(this.fastTween);     
+                    this.popoverContent.getCachedElement("e29f472c").text(vehicleData.get("id").stringValue());
+                    this.popoverContent.getCachedElement("ff42bb70").text(vehicleData.get("routeTag").stringValue());
+                    this.popoverContent.getCachedElement("30f5f749").text(vehicleData.get("dirTag").stringValue());
+                    this.popoverContent.getCachedElement("7f01cf3a").text(vehicleData.get("secsSinceReport").stringValue());
+                    this.popoverContent.getCachedElement("6774af27").text(`${vehicleData.get("heading").stringValue()}°`);
+                    this.popoverContent.getCachedElement("71eb4fb3").text(`${vehicleData.get("speedKmHr").stringValue()}/kph`);
+                })
+                .on("mouseover", (evt) => {
+                    tempMarker.fill(swim.Color.rgb(0,255,0), this.fastTween);
+                    tempMarker.stroke(swim.Color.rgb(0,255,0), this.fastTween);
+                    tempMarker.radius(12, this.fastTween);
+                    // console.info("bus mouse over:" + vehicleData);
+                })
+                .on("mouseout", (evt) => {
+                    let route = this.routeList[routeId]; 
+                    let newRgb = swim.Color.rgb(255,255,255);
+                    if(route && route.details) {
+                        newRgb = swim.Color.parse(`#${route.details.get("color").stringValue("ffffff")}`);
+                    }
+                    let markerFillColor = newRgb.alpha(0.75);
+                    let markerStrokeColor = newRgb.alpha(0.95);
+                    tempMarker.radius(6, this.fastTween);
+                    tempMarker.fill(markerFillColor, this.fastTween);
+                    tempMarker.stroke(markerStrokeColor, this.fastTween);
+                    // console.info("bus mouse out:" + vehicleData);
+                });        
+
+
+            this.overlay.setChildView(markerId, tempMarker);
+            this.vehicleMarkers[markerId] = tempMarker;  
+        } else {
+            let tempMarker = this.vehicleMarkers[markerId]
+            const newCenter = [vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)];
+            tempMarker.center.setState(newCenter, tween);            
+            tempMarker.fill(markerFillColor);
+            tempMarker.stroke(markerStrokeColor);
+
+        }
+          
     }
 
     renderBusStop(stopData, pathColor) {
@@ -397,6 +457,7 @@ class IndexPage {
         console.info(`Selected ${agencyTag}`);
         this.clearTracks();
         this.clearStopMarkers();
+        this.popoverView.hidePopover(this.fastTween);  
         this.selectedAgency = this.agencies[agencyTag];
         this.selectedRoute = null;
         this.routeList = [];
