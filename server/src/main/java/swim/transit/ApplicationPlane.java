@@ -9,9 +9,12 @@ import swim.kernel.Kernel;
 import swim.server.ServerLoader;
 import swim.structure.Value;
 import swim.uri.Uri;
-import swim.ui.LayoutsManagerAgent;
-import swim.ui.LayoutAgent;
-import swim.configUtil.ConfigEnv;
+import swim.transit.agents.*;
+import swim.transit.ui.*;
+import swim.transit.configUtil.*;
+import swim.transit.bridges.AgenciesImportAgent;
+
+
 
 /**
   The ApplicationPlane is the top level of the app.
@@ -31,8 +34,8 @@ public class ApplicationPlane extends AbstractPlane {
   @SwimRoute("/routes/:uid")
   AgentRoute<RouteAgent> RouteAgent;
 
-  // @SwimRoute("/bridge/airplaneData")
-  // AgentRoute<AirplaneDataAgent> airplaneDataAgent;
+  @SwimRoute("/vehicle/:id")
+  AgentRoute<VehicleAgent> VehicleAgent;
 
   @SwimRoute("/config")
   AgentRoute<ConfigAgent> configAgent;

@@ -1,4 +1,4 @@
-package swim.configUtil;
+package swim.transit.configUtil;
 
 import java.io.BufferedReader;
 import java.io.File;

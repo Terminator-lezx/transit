@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.agents;
 
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -21,7 +21,7 @@ import swim.api.lane.ValueLane;
 import swim.api.lane.MapLane;
 import swim.codec.Utf8;
 import swim.concurrent.TimerRef;
-import swim.configUtil.ConfigEnv;
+import swim.transit.configUtil.ConfigEnv;
 import swim.json.Json;
 import swim.structure.Item;
 import swim.structure.Value;

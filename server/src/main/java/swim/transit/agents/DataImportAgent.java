@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.agents;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -47,20 +47,20 @@ public class DataImportAgent extends AbstractAgent {
      * each row of the map relates to each line of the csv
      */
     @SwimLane("fileContent")
-    MapLane<Integer, String> fileContent;    
+    public MapLane<Integer, String> fileContent;    
 
     /**
      * map lane of parsable csv data read in from the csv file
      */
     @SwimLane("cvsData")
-    MapLane<Integer, Record> csvData;
+    public MapLane<Integer, Record> csvData;
 
     /**
      * holds a Record of the results of the csv import
      * such as number of records imported and total time taken
      */
     @SwimLane("csvFileInfo")
-    ValueLane<Record> csvFileInfo = this.<Record>valueLane();
+    public ValueLane<Record> csvFileInfo = this.<Record>valueLane();
 
     @Override
     public void didStart() {

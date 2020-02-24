@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.ui;
 
 import swim.api.SwimLane;
 import swim.api.agent.AbstractAgent;

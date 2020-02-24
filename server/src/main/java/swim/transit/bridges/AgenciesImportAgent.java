@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.bridges;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -22,7 +22,8 @@ import swim.util.Cursor;
 import swim.uri.Uri;
 import swim.json.Json;
 import swim.structure.Item;
-import swim.configUtil.ConfigEnv;
+import swim.transit.configUtil.ConfigEnv;
+import swim.transit.agents.DataImportAgent;
 
 /**
  * The State Agent holds all the values for each State Vector returned by the
@@ -51,8 +52,7 @@ public class AgenciesImportAgent extends DataImportAgent {
     @Override
     public void didStart() {
         super.didStart();
-        // String logMsg = "Agencies Import Agent: Agent started";
-        // command(Uri.parse("/simulator"), Uri.parse("addJavaLog"), Value.fromObject(logMsg));
+
         this.initialize(config, "agencies");
     }    
 
@@ -79,19 +79,8 @@ public class AgenciesImportAgent extends DataImportAgent {
             this.agenciesList.put(agencyTag, rowItem);
 
             agencyCount++;
-            // // send processed data to App
-            // if(airportType.compareTo("large_airport") == 0) {
-            //     command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/airport/" + airportId), Uri.parse("addLargeAirport"), rowItem);
-            //     largeCount++;
-            // }
-            // if(airportType.compareTo("medium_airport") == 0) {
-            //     command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/airport/" + airportId), Uri.parse("addMediumAirport"), rowItem);                             
-            //     mediumCount++;
-            // }        
+   
         }
-
-        // notify Aggregation agent in App to update any airport filters 
-        // command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/aggregation"), Uri.parse("runAirportFilter"), Value.absent()); 
 
         // log results
         String logMsg = "Found " + agencyCount.toString() + " agencies";

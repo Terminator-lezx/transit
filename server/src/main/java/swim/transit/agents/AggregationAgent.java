@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.agents;
 
 import com.microsoft.azure.eventhubs.EventHubException;
 
@@ -17,7 +17,7 @@ import swim.uri.Uri;
 import swim.json.Json;
 import swim.util.Cursor;
 import swim.structure.Item;
-import swim.configUtil.ConfigEnv;
+import swim.transit.configUtil.ConfigEnv;
 
 import java.io.BufferedReader;
 import java.io.File;

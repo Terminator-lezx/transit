@@ -1,4 +1,4 @@
-package swim.ui;
+package swim.transit.ui;
 
 import java.io.BufferedReader;
 import java.io.File;

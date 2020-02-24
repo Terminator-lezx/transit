@@ -1,4 +1,4 @@
-package swim.transit;
+package swim.transit.agents;
 
 import swim.api.SwimLane;
 import swim.api.agent.AbstractAgent;
@@ -22,6 +22,7 @@ public class AgencyAgent extends AbstractAgent {
   private String routeUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=routeList&a=";
   private Record agencyBounds;
   private TimerRef vehicleRefreshTimer;
+  private Long lastVehicleUpdateTime;
 
   @SwimLane("tag")
   protected ValueLane<Value> tag;
@@ -99,7 +100,9 @@ public class AgencyAgent extends AbstractAgent {
         final Item xmlRowData = vehicleIterator.next();
         final Value vehicleData = xmlRowData.getAttr("vehicle");      
         if (vehicleData.isDefined()) {
-          this.vehicleList.put(vehicleData.get("id").stringValue(), vehicleData);
+          final String vehicleId = vehicleData.get("id").stringValue().replaceAll("\\s+","");
+          this.vehicleList.put(vehicleId, vehicleData);
+          command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/vehicle/" + vehicleId), Uri.parse("updateVehicle"), vehicleData);
         }
       }
       
@@ -172,7 +175,10 @@ public class AgencyAgent extends AbstractAgent {
   private void getVehicleList() {
     // create record which will tell apiRequestAgent where to get data and where to put the result
     final String tag = this.tag.get().stringValue();
-    final String url = String.format("http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=%s&t=0", tag);
+    String url = String.format("http://webservices.nextbus.com/service/publicXMLFeed?command=vehicleLocations&a=%s&t=0", tag);
+    if(this.lastVehicleUpdateTime != null) {
+      url = url + "&time=" + lastVehicleUpdateTime.toString();
+    }
     final Record apiRequestInfo = Record.create()
       .slot("targetHost", "warp://127.0.0.1:9001")
       .slot("targetAgent", "/agency/" + tag)
@@ -181,7 +187,8 @@ public class AgencyAgent extends AbstractAgent {
 
       // System.out.println(apiRequestInfo);
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/vehicles"), Uri.parse("makeRequest"), apiRequestInfo);       
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/vehicles"), Uri.parse("makeRequest"), apiRequestInfo);   
+    this.lastVehicleUpdateTime = System.currentTimeMillis();    
   }
 
   private void refreshAgencyDetails() {
