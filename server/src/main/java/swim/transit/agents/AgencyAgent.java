@@ -44,11 +44,6 @@ public class AgencyAgent extends AbstractAgent {
     .onCommand((Record routeData) -> {
       
       Record newBounds = Record.create();
-        // .slot("minLat", this.agencyBounds.get("minLat").doubleValue(0d))
-        // .slot("maxLat", this.agencyBounds.get("maxLat").doubleValue(0d))
-        // .slot("minLong", this.agencyBounds.get("minLong").doubleValue(0d))
-        // .slot("maxLong", this.agencyBounds.get("maxLong").doubleValue(0d));
-
 
       if(routeData.get("minLat").doubleValue() < this.agencyBounds.get("minLat").doubleValue() || newBounds.get("minLat") == Value.absent()) {
         newBounds.slot("minLat", routeData.get("minLat").doubleValue());
@@ -66,12 +61,6 @@ public class AgencyAgent extends AbstractAgent {
         newBounds.slot("maxLong", routeData.get("maxLong").doubleValue());
       }      
 
-      // // this.agencyBounds = Record.create()
-      // //   .slot("minLat", 0d)
-      // //   .slot("maxLat", 0d)
-      // //   .slot("minLong", 0d)
-      // //   .slot("maxLong", 0d);      
-      // System.out.println(newBounds);
       this.agencyBounds = newBounds;
       this.refreshAgencyDetails();
 
@@ -100,7 +89,8 @@ public class AgencyAgent extends AbstractAgent {
         final Item xmlRowData = vehicleIterator.next();
         final Value vehicleData = xmlRowData.getAttr("vehicle");      
         if (vehicleData.isDefined()) {
-          final String vehicleId = vehicleData.get("id").stringValue().replaceAll("\\s+","");
+          String vehicleId = vehicleData.get("id").stringValue().replaceAll("\\s+","");
+          vehicleId += "-" + vehicleData.get("routeTag").stringValue().replaceAll("\\s+","");
           this.vehicleList.put(vehicleId, vehicleData);
           command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/vehicle/" + vehicleId), Uri.parse("updateVehicle"), vehicleData);
         }
@@ -208,6 +198,6 @@ public class AgencyAgent extends AbstractAgent {
       this.vehicleRefreshTimer.cancel();
     }
 
-    this.vehicleRefreshTimer = setTimer(1000, this::getVehicleList);
+    this.vehicleRefreshTimer = setTimer(100, this::getVehicleList);
   }   
 }

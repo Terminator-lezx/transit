@@ -31,7 +31,8 @@ class IndexPage {
     routeDirty = false;
     stopsDirty = false;
     scheduleDirty = false;
-    popoverView = null;
+    busPopoverView = null;
+    stopPopoverView = null;
     fastTween = swim.Transition.duration(100);
     
     constructor(swimUrl, elementID, templateID) {
@@ -144,18 +145,7 @@ class IndexPage {
         this.routeListDiv = this.rootSwimElement.getCachedElement("cec61646");
         this.routeCountDiv = this.rootSwimElement.getCachedElement("1a6cff34");
         
-        // this.pie2Div = this.rootSwimElement.getCachedElement("c3ab4b07");
-        // this.datagridDiv = this.rootSwimElement.getCachedElement("d5dbe551");
-        // const menuDivButton = document.getElementById("9567a26b");
-        // menuDivButton.onclick = () => {
-        //     this.toggleMenu()
-        // }
-
-
-
         this.map.map.on("load", () => {
-            // this.drawOnGroundPie();
-            // this.drawAltitudePie();
             this.updateMapBoundingBox();
             for(let linkLKey in this.links) {
                 this.links[linkLKey].open();
@@ -178,7 +168,7 @@ class IndexPage {
             this.drawBuilding()
         });
 
-        this.popoverView = new swim.PopoverView()
+        this.busPopoverView = new swim.PopoverView()
             // .width(220)
             // .height(220)
             .borderRadius(5)
@@ -188,10 +178,25 @@ class IndexPage {
             .backgroundColor(swim.Color.parse("#071013").alpha(0.9))
             .backdropFilter("blur(2px)");
             
-        this.popoverContent = swim.HtmlView.create("div");
-        this.popoverContent.render("0509191f");
-        this.popoverView.append(this.popoverContent);
-        this.rootSwimElement.append(this.popoverView);
+        this.busPopoverContent = swim.HtmlView.create("div");
+        this.busPopoverContent.render("0509191f");
+        this.busPopoverView.append(this.busPopoverContent);
+        this.rootSwimElement.append(this.busPopoverView);
+
+        this.stopPopoverView = new swim.PopoverView()
+            // .width(220)
+            // .height(220)
+            .borderRadius(5)
+            .padding(0)
+            .arrowHeight(20)
+            .arrowWidth(20)
+            .backgroundColor(swim.Color.parse("#071013").alpha(0.9))
+            .backdropFilter("blur(2px)");
+            
+        this.stopPopoverContent = swim.HtmlView.create("div");
+        this.stopPopoverContent.render("e03c39dc");
+        this.stopPopoverView.append(this.stopPopoverContent);
+        this.rootSwimElement.append(this.stopPopoverView);
 
         window.requestAnimationFrame(() => {
             this.render();
@@ -370,15 +375,8 @@ class IndexPage {
                 .strokeWidth(1)
                 .on("click", (evt) => {
                     console.info("bus clicked:" + vehicleData);
-                    this.popoverView.hidePopover(this.fastTween);          
-                    this.popoverView.setSource(tempMarker, {multi: event.altKey});            
-                    this.popoverView.showPopover(this.fastTween);     
-                    this.popoverContent.getCachedElement("e29f472c").text(vehicleData.get("id").stringValue());
-                    this.popoverContent.getCachedElement("ff42bb70").text(vehicleData.get("routeTag").stringValue());
-                    this.popoverContent.getCachedElement("30f5f749").text(vehicleData.get("dirTag").stringValue());
-                    this.popoverContent.getCachedElement("7f01cf3a").text(vehicleData.get("secsSinceReport").stringValue());
-                    this.popoverContent.getCachedElement("6774af27").text(`${vehicleData.get("heading").stringValue()}°`);
-                    this.popoverContent.getCachedElement("71eb4fb3").text(`${vehicleData.get("speedKmHr").stringValue()}/kph`);
+                    const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
+                    this.renderBusPopover(tempMarker, vehicleId);
                 })
                 .on("mouseover", (evt) => {
                     tempMarker.fill(swim.Color.rgb(0,255,0), this.fastTween);
@@ -414,6 +412,36 @@ class IndexPage {
           
     }
 
+    renderBusPopover(tempMarker, vehicleId) {
+
+        console.info("bus clicked:" + vehicleId);
+
+        this.busPopoverView.hidePopover(this.fastTween);          
+        this.busPopoverView.setSource(tempMarker, {multi: event.altKey});            
+        this.busPopoverView.showPopover(this.fastTween);     
+
+        if(this.links["vehicleDetails"] && this.links["vehicleDetails"].close) {
+            console.info("close vehicle details link")
+            this.links["vehicleDetails"].close();
+        }
+
+        this.links["vehicleDetails"] = swim.nodeRef(this.swimUrl, '/vehicle/' + vehicleId).downlinkValue().laneUri('vehicleData')
+            .didSet((vehicleData, oldValue) => {
+                this.busPopoverContent.getCachedElement("e29f472c").text(vehicleData.get("id").stringValue());
+                this.busPopoverContent.getCachedElement("ff42bb70").text(vehicleData.get("routeTag").stringValue());
+                this.busPopoverContent.getCachedElement("30f5f749").text(vehicleData.get("dirTag").stringValue());
+                this.busPopoverContent.getCachedElement("7f01cf3a").text(vehicleData.get("secsSinceReport").stringValue());
+                this.busPopoverContent.getCachedElement("6774af27").text(`${vehicleData.get("heading").stringValue()}°`);
+                this.busPopoverContent.getCachedElement("71eb4fb3").text(`${vehicleData.get("speedKmHr").stringValue()}/kph`);
+        
+                // console.info(newValue);
+                // this.agencies[agencyTag].details = newValue;
+                // this.links["agencyDetail-" + agencyTag].close();
+            })
+            .open();
+
+    }
+
     renderBusStop(stopData, pathColor) {
         let markerFillColor = pathColor.alpha(0.1);//newRgb.alpha(0.75);
         let markerStrokeColor = pathColor; //newRgb.alpha(0.95);
@@ -425,11 +453,59 @@ class IndexPage {
             .radius(8)
             .fill(markerFillColor)
             .stroke(markerStrokeColor)
-            .strokeWidth(1);        
+            .strokeWidth(1)
+            .on("click", (evt) => {
+                console.info("stop clicked:" + stopData);
+                // const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
+                this.renderStopPopover(tempMarker, stopData.get("tag").stringValue(""));
+            })
+            .on("mouseover", (evt) => {
+                tempMarker.fill(swim.Color.rgb(255,255,100), this.fastTween);
+                tempMarker.stroke(swim.Color.rgb(255,255,100), this.fastTween);
+                tempMarker.radius(12, this.fastTween);
+                // console.info("bus mouse over:" + vehicleData);
+            })
+            .on("mouseout", (evt) => {
+                tempMarker.radius(6, this.fastTween);
+                tempMarker.fill(markerFillColor, this.fastTween);
+                tempMarker.stroke(markerStrokeColor, this.fastTween);
+                // console.info("bus mouse out:" + vehicleData);
+            });                   
 
         this.overlay.setChildView(markerId, tempMarker);
         this.routeStopMarkers[markerId] = tempMarker;            
     }
+
+
+    renderStopPopover(tempMarker, stopId) {
+
+        console.info("stop clicked:" + stopId);
+
+        this.stopPopoverView.hidePopover(this.fastTween);          
+        this.stopPopoverView.setSource(tempMarker, {multi: event.altKey});            
+        this.stopPopoverView.showPopover(this.fastTween);     
+
+        // if(this.links["vehicleDetails"] && this.links["vehicleDetails"].close) {
+        //     console.info("close vehicle details link")
+        //     this.links["vehicleDetails"].close();
+        // }
+
+        // this.links["vehicleDetails"] = swim.nodeRef(this.swimUrl, '/vehicle/' + vehicleId).downlinkValue().laneUri('vehicleData')
+        //     .didSet((vehicleData, oldValue) => {
+        //         this.popoverContent.getCachedElement("e29f472c").text(vehicleData.get("id").stringValue());
+        //         this.popoverContent.getCachedElement("ff42bb70").text(vehicleData.get("routeTag").stringValue());
+        //         this.popoverContent.getCachedElement("30f5f749").text(vehicleData.get("dirTag").stringValue());
+        //         this.popoverContent.getCachedElement("7f01cf3a").text(vehicleData.get("secsSinceReport").stringValue());
+        //         this.popoverContent.getCachedElement("6774af27").text(`${vehicleData.get("heading").stringValue()}°`);
+        //         this.popoverContent.getCachedElement("71eb4fb3").text(`${vehicleData.get("speedKmHr").stringValue()}/kph`);
+        
+        //         // console.info(newValue);
+        //         // this.agencies[agencyTag].details = newValue;
+        //         // this.links["agencyDetail-" + agencyTag].close();
+        //     })
+        //     .open();
+
+    }    
 
     renderBusRoute(paths, pathColor) {
         
@@ -457,11 +533,16 @@ class IndexPage {
         console.info(`Selected ${agencyTag}`);
         this.clearTracks();
         this.clearStopMarkers();
-        this.popoverView.hidePopover(this.fastTween);  
+        this.busPopoverView.hidePopover(this.fastTween);  
         this.selectedAgency = this.agencies[agencyTag];
         this.selectedRoute = null;
         this.routeList = [];
         this.vehicleList = [];
+        if(this.links["vehicleDetails"] && this.links["vehicleDetails"].close) {
+            console.info("close vehicle details link")
+            this.links["vehicleDetails"].close();
+        }
+
         // update page title
         document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
 
@@ -535,7 +616,7 @@ class IndexPage {
             })
             .didSync(() => {
                 this.routeDirty = true;
-                // pathLink.close();
+                pathLink.close();
             })                    
             .open();
         const stopsLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkMap().laneUri('stops')
@@ -546,7 +627,7 @@ class IndexPage {
             })
             .didSync(() => {
                 this.stopsDirty = true;
-                // stopsLink.close();
+                stopsLink.close();
             })                    
             .open();
         // const scheduleLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkValue().laneUri('schedule')
@@ -753,7 +834,7 @@ class IndexPage {
                         15.05,
                         ['get', 'min_height']
                     ],
-                    'fill-extrusion-opacity': 0.6
+                    'fill-extrusion-opacity': 0.75
                 }
             },
             labelLayerId
