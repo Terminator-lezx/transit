@@ -37,6 +37,9 @@ public class ApplicationPlane extends AbstractPlane {
   @SwimRoute("/vehicle/:id")
   AgentRoute<VehicleAgent> VehicleAgent;
 
+  @SwimRoute("/stop/:id")
+  AgentRoute<StopAgent> StopAgent;
+
   @SwimRoute("/config")
   AgentRoute<ConfigAgent> configAgent;
 

@@ -58,6 +58,8 @@ class IndexPage {
         swim.command(this.swimUrl, "/userPrefs/" + this.userGuid, "setGuid", this.userGuid);
         this.rootHtmlElement = document.getElementById(this.rootHtmlElementId);
         this.rootSwimElement = swim.HtmlView.fromNode(this.rootHtmlElement);
+        this.agencyDropdown = document.getElementById("agencyDropDown");
+        this.routeDropdown = document.getElementById("routeDropDown");
         this.loadTemplate(this.rootSwimTemplateId, this.rootSwimElement, this.start.bind(this));
 
 
@@ -71,6 +73,7 @@ class IndexPage {
                     info: newValue,
                     details: null
                 };
+
                 this.getAgencyDetails(agencyTag);
             })
             .didSync(() => {
@@ -198,6 +201,10 @@ class IndexPage {
         this.stopPopoverView.append(this.stopPopoverContent);
         this.rootSwimElement.append(this.stopPopoverView);
 
+        this.routeDropdown.onchange = (evt) => {
+            this.selectRoute(evt.target.value);
+        }
+
         window.requestAnimationFrame(() => {
             this.render();
         })
@@ -243,25 +250,52 @@ class IndexPage {
         // render agency list
         if (this.agencyListDirty) {
             this.renderAgencyList();
+            this.routeDropdown.style.display = "none";
             this.agencyListDirty = false;
         }
 
         // render route listing for selected agency (if any)
         if(this.selectAgency && this.agencyChanged) {
             console.info("render route list", this.routeList);
-            this.routeListDiv.node.innerHTML = "";
-            this.routeCountDiv.node.innerHTML = Object.keys(page.routeList).length;
+            // this.routeListDiv.node.innerHTML = "";
+            // this.routeCountDiv.node.innerHTML = Object.keys(page.routeList).length;
+            // for(const route in this.routeList) {
+            //     const routeData = this.routeList[route];
+            //     const routeDiv = swim.HtmlView.create("div");
+            //     console.info("route", routeData.info.stringValue());
+            //     routeDiv.node.innerHTML = routeData.info.stringValue();
+            //     routeDiv.on("click", (evt) => {
+            //         this.selectRoute(route);
+            //     });
+            //     this.routeListDiv.append(routeDiv);
+            // }
+
+            this.routeDropdown.innerHTML = "";
+            // const agencyData = this.agencies[agencyTag];
+            const startingOption = document.createElement("option");
+            startingOption.value = "null";
+            startingOption.innerText = "Select a Route";
+    
+            this.routeDropdown.appendChild(startingOption);            
+            this.agencyChanged = false;
+
             for(const route in this.routeList) {
                 const routeData = this.routeList[route];
-                const routeDiv = swim.HtmlView.create("div");
-                console.info("route", routeData.info.stringValue());
-                routeDiv.node.innerHTML = routeData.info.stringValue();
-                routeDiv.on("click", (evt) => {
-                    this.selectRoute(route);
-                });
-                this.routeListDiv.append(routeDiv);
+                const newOption = document.createElement("option");
+                newOption.value = route;
+                newOption.innerText = routeData.info.stringValue();
+                this.routeDropdown.appendChild(newOption);
             }
-            this.agencyChanged = false;
+                
+        }
+
+        //draw agency vehicles
+        if(this.vehicleListDirty) {
+            for(const vehicle in this.vehicleList) {
+                // console.info(vehicle);
+                this.renderVehicle(this.vehicleList[vehicle]);
+            }
+            this.vehicleListDirty = false;
         }
 
         // draw route line and stops if needed
@@ -312,15 +346,6 @@ class IndexPage {
             
         }
 
-        //draw agency vehicles
-        if(this.vehicleListDirty) {
-            for(const vehicle in this.vehicleList) {
-                // console.info(vehicle);
-                this.renderVehicle(this.vehicleList[vehicle]);
-            }
-            this.vehicleListDirty = false;
-        }
-
         window.requestAnimationFrame(() => {
             this.render();
         })
@@ -338,16 +363,28 @@ class IndexPage {
     }
 
     renderAgencyList() {
-        const listContainer = this.rootSwimElement.getCachedElement("cfb9be55");
-        listContainer.node.innerHTML = "";
-        for(const agencyTag in this.agencies) {
-            const rowDiv = swim.HtmlView.create("div")
-            rowDiv.node.onclick = (clickEvent) => {
-                this.selectAgency(agencyTag);
-            }
-            rowDiv.text(agencyTag);
-            listContainer.append(rowDiv);
+        // const listContainer = this.rootSwimElement.getCachedElement("cfb9be55");
+        // listContainer.node.innerHTML = "";
 
+        this.agencyDropdown.onchange = (evt) => {
+            console.info(evt);
+            this.selectAgency(evt.target.value);
+        }
+
+        for(const agencyTag in this.agencies) {
+            // const rowDiv = swim.HtmlView.create("div")
+            // rowDiv.node.onclick = (clickEvent) => {
+            //     this.selectAgency(agencyTag);
+            // }
+            // rowDiv.text(agencyTag);
+            // listContainer.append(rowDiv);
+            const agencyData = this.agencies[agencyTag];
+            const optionTag = document.createElement("option");
+            optionTag.value = agencyTag;
+            optionTag.innerText = agencyData.info.get("title");
+    
+            this.agencyDropdown.appendChild(optionTag);
+    
             // console.info(agencyTag);
         }
     }
@@ -440,6 +477,7 @@ class IndexPage {
             })
             .open();
 
+        this.didMapMove = true;
     }
 
     renderBusStop(stopData, pathColor) {
@@ -455,9 +493,9 @@ class IndexPage {
             .stroke(markerStrokeColor)
             .strokeWidth(1)
             .on("click", (evt) => {
-                console.info("stop clicked:" + stopData);
+                // console.info("stop clicked:" + stopData);
                 // const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
-                this.renderStopPopover(tempMarker, stopData.get("tag").stringValue(""));
+                this.renderStopPopover(tempMarker, stopData);
             })
             .on("mouseover", (evt) => {
                 tempMarker.fill(swim.Color.rgb(255,255,100), this.fastTween);
@@ -477,33 +515,18 @@ class IndexPage {
     }
 
 
-    renderStopPopover(tempMarker, stopId) {
+    renderStopPopover(tempMarker, stopData) {
 
-        console.info("stop clicked:" + stopId);
+        console.info("stop clicked:" + stopData);
 
         this.stopPopoverView.hidePopover(this.fastTween);          
         this.stopPopoverView.setSource(tempMarker, {multi: event.altKey});            
         this.stopPopoverView.showPopover(this.fastTween);     
 
-        // if(this.links["vehicleDetails"] && this.links["vehicleDetails"].close) {
-        //     console.info("close vehicle details link")
-        //     this.links["vehicleDetails"].close();
-        // }
-
-        // this.links["vehicleDetails"] = swim.nodeRef(this.swimUrl, '/vehicle/' + vehicleId).downlinkValue().laneUri('vehicleData')
-        //     .didSet((vehicleData, oldValue) => {
-        //         this.popoverContent.getCachedElement("e29f472c").text(vehicleData.get("id").stringValue());
-        //         this.popoverContent.getCachedElement("ff42bb70").text(vehicleData.get("routeTag").stringValue());
-        //         this.popoverContent.getCachedElement("30f5f749").text(vehicleData.get("dirTag").stringValue());
-        //         this.popoverContent.getCachedElement("7f01cf3a").text(vehicleData.get("secsSinceReport").stringValue());
-        //         this.popoverContent.getCachedElement("6774af27").text(`${vehicleData.get("heading").stringValue()}°`);
-        //         this.popoverContent.getCachedElement("71eb4fb3").text(`${vehicleData.get("speedKmHr").stringValue()}/kph`);
         
-        //         // console.info(newValue);
-        //         // this.agencies[agencyTag].details = newValue;
-        //         // this.links["agencyDetail-" + agencyTag].close();
-        //     })
-        //     .open();
+        this.stopPopoverContent.getCachedElement("e29f4721").text(stopData.get("stopId").stringValue(""));
+        this.stopPopoverContent.getCachedElement("ff42bb71").text(stopData.get("tag").stringValue(""));
+        this.stopPopoverContent.getCachedElement("30f5f741").text(stopData.get("title").stringValue(""));
 
     }    
 
@@ -534,6 +557,7 @@ class IndexPage {
         this.clearTracks();
         this.clearStopMarkers();
         this.busPopoverView.hidePopover(this.fastTween);  
+        this.stopPopoverView.hidePopover(this.fastTween);
         this.selectedAgency = this.agencies[agencyTag];
         this.selectedRoute = null;
         this.routeList = [];
@@ -544,7 +568,7 @@ class IndexPage {
         }
 
         // update page title
-        document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
+        // document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
 
         // center map on agency area
         const agencyBounds = this.selectedAgency.details.get("agencyBounds");
@@ -553,7 +577,8 @@ class IndexPage {
             [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
 
         ];
-        this.map.map.fitBounds(bbox, {padding: 200});        
+        this.map.map.setPitch(0);
+        this.map.map.fitBounds(bbox, {padding: 20});  
 
         // get all route data for selected agency
         const routeLink = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
@@ -580,6 +605,7 @@ class IndexPage {
                 // this.links["routeList"].close();
                 this.agencyChanged = true;
                 this.routeDirty = true;
+                this.routeDropdown.style.display = "block";
                 // routeLink.close();
             })            
             .open();        
@@ -607,6 +633,7 @@ class IndexPage {
         console.info(`selected route: ${this.selectedRoute}`);
         this.clearTracks();
         this.clearStopMarkers();
+        this.stopPopoverView.hidePopover();
         const routeData = this.routeList[this.selectedRoute];
         this.routeDirty = true;
         const pathLink = swim.nodeRef(this.swimUrl, '/routes/' + this.selectedRoute).downlinkMap().laneUri('paths')

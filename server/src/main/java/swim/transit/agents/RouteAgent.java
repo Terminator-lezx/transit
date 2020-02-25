@@ -94,7 +94,13 @@ public class RouteAgent extends AbstractAgent {
                 switch(rowTag) {
                   case "stop":
                     final Value stopData = stopItem.getAttr("stop");
+
+                    Record stopRecord = Record.create()
+                      .slot("agencyTag", this.agencyTag)
+                      .slot("stopData", stopData);
+
                     this.stops.put(stopData.get("tag").stringValue(), stopData);
+                    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/stop/" + stopData.get("tag").stringValue()), Uri.parse("updateStop"), stopRecord);    
                     break;
 
                   case "direction":

@@ -80,6 +80,19 @@
   h6, .h6 {
     line-height: 1.23;
   }
+
+  .menu {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+  }
+
+  .menu select {
+    margin: 10px;
+    background-color: #404040;
+    color: white;
+    border: 0px;
+  }
   
   /* ===============================
    * Bootstrap override
