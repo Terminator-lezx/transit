@@ -337,7 +337,7 @@ class IndexPage {
                     // console.info(stops);
                     for(const stop in stops) {
                         
-                        this.renderBusStop(stops[stop], pathColor);
+                        this.renderBusStop(stops[stop], pathColor, routeData.details.get("tag"));
                     }
                     this.stopsDirty = false;
                 }
@@ -401,7 +401,7 @@ class IndexPage {
         }
         let markerFillColor = newRgb.alpha(0.75);
         let markerStrokeColor = newRgb.alpha(0.95);
-        let markerId = vehicleData.get("id").stringValue("deadbeef");
+        let markerId = vehicleData.get("id").stringValue("") + "-" + vehicleData.get("routeTag").stringValue("").replace(/\s/g, '');
 
         if(!this.vehicleMarkers[markerId]) {
             let tempMarker = new swim.MapCircleView()
@@ -454,7 +454,7 @@ class IndexPage {
         console.info("bus clicked:" + vehicleId);
 
         this.busPopoverView.hidePopover(this.fastTween);          
-        this.busPopoverView.setSource(tempMarker, {multi: event.altKey});            
+        this.busPopoverView.setSource(tempMarker);            
         this.busPopoverView.showPopover(this.fastTween);     
 
         if(this.links["vehicleDetails"] && this.links["vehicleDetails"].close) {
@@ -480,7 +480,7 @@ class IndexPage {
         this.didMapMove = true;
     }
 
-    renderBusStop(stopData, pathColor) {
+    renderBusStop(stopData, pathColor, routeTag) {
         let markerFillColor = pathColor.alpha(0.1);//newRgb.alpha(0.75);
         let markerStrokeColor = pathColor; //newRgb.alpha(0.95);
         let markerId = stopData.get("stopId").stringValue("deadbeef");
@@ -495,7 +495,7 @@ class IndexPage {
             .on("click", (evt) => {
                 // console.info("stop clicked:" + stopData);
                 // const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
-                this.renderStopPopover(tempMarker, stopData);
+                this.renderStopPopover(tempMarker, stopData, routeTag);
             })
             .on("mouseover", (evt) => {
                 tempMarker.fill(swim.Color.rgb(255,255,100), this.fastTween);
@@ -515,7 +515,7 @@ class IndexPage {
     }
 
 
-    renderStopPopover(tempMarker, stopData) {
+    renderStopPopover(tempMarker, stopData, routeTag) {
 
         console.info("stop clicked:" + stopData);
         const stopId = stopData.get("stopId").stringValue("0");
@@ -530,18 +530,29 @@ class IndexPage {
         this.stopPopoverContent.getCachedElement("e29f4721").text(stopId);
         this.stopPopoverContent.getCachedElement("ff42bb71").text(stopTag);
         this.stopPopoverContent.getCachedElement("30f5f741").text(stopTitle);
-
+        this.stopPopoverContent.getCachedElement("354a406f").text("");
+        this.stopPopoverContent.getCachedElement("43f682b0").text("");
         if(this.links["stopPredictions"] && this.links["stopPredictions"].close()) {
             this.links["stopPredictions"].close();
         }
 
         this.links["stopPredictions"] = swim.nodeRef(this.swimUrl, '/stop/' + stopTag.toString() + stopId.toString()).downlinkValue().laneUri('predictions')
             .didSet((vehicleData, oldValue) => {
-                const nextBus = vehicleData.getItem(0).value.getItem(0);
-                if(nextBus) {
-                    this.stopPopoverContent.getCachedElement("354a406f").text(`${nextBus.get("seconds").numberValue(0)} sec.`);
+                if(vehicleData != swim.Value.absent()) {
+                    const nextBus = vehicleData.getItem(0).value.getItem(0);
+                    if(nextBus) {
+                        const vehicleIdDiv = this.stopPopoverContent.getCachedElement("43f682b0")
+                        this.stopPopoverContent.getCachedElement("354a406f").text(`${nextBus.get("seconds").numberValue(0)} sec.`);
+                        vehicleIdDiv.text(`${nextBus.get("vehicle").stringValue("?")}`);
+                        vehicleIdDiv.node.onmouseup = (evt) => {
+                            const vehId = nextBus.get("vehicle").stringValue("") + "-" + routeTag; 
+                            this.renderBusPopover(this.vehicleMarkers[vehId], vehId);
+                        }
+                        
+                    }
+                    console.info(vehicleData.getItem(0).value.getItem(0));
+    
                 }
-                console.info(vehicleData.getItem(0).value.getItem(0));
                 // this.agencies[agencyTag].details = newValue;
                 // this.links["agencyDetail-" + agencyTag].close();
             })

@@ -117,6 +117,6 @@ public class StopAgent extends AbstractAgent {
       this.predictionRefreshTimer.cancel();
     }
 
-    // this.predictionRefreshTimer = setTimer(5000, this::getStopPredictions);
+    this.predictionRefreshTimer = setTimer((30000), this::getStopPredictions);
   }  
 }

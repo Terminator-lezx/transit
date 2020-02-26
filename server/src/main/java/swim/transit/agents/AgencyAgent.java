@@ -198,6 +198,6 @@ public class AgencyAgent extends AbstractAgent {
       this.vehicleRefreshTimer.cancel();
     }
 
-    this.vehicleRefreshTimer = setTimer(2000, this::getVehicleList);
+    this.vehicleRefreshTimer = setTimer(500, this::getVehicleList);
   }   
 }
