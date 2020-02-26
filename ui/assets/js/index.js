@@ -518,15 +518,34 @@ class IndexPage {
     renderStopPopover(tempMarker, stopData) {
 
         console.info("stop clicked:" + stopData);
+        const stopId = stopData.get("stopId").stringValue("0");
+        const stopTag = stopData.get("tag").stringValue("");
+        const stopTitle = stopData.get("title").stringValue("")
 
         this.stopPopoverView.hidePopover(this.fastTween);          
         this.stopPopoverView.setSource(tempMarker, {multi: event.altKey});            
         this.stopPopoverView.showPopover(this.fastTween);     
 
         
-        this.stopPopoverContent.getCachedElement("e29f4721").text(stopData.get("stopId").stringValue(""));
-        this.stopPopoverContent.getCachedElement("ff42bb71").text(stopData.get("tag").stringValue(""));
-        this.stopPopoverContent.getCachedElement("30f5f741").text(stopData.get("title").stringValue(""));
+        this.stopPopoverContent.getCachedElement("e29f4721").text(stopId);
+        this.stopPopoverContent.getCachedElement("ff42bb71").text(stopTag);
+        this.stopPopoverContent.getCachedElement("30f5f741").text(stopTitle);
+
+        if(this.links["stopPredictions"] && this.links["stopPredictions"].close()) {
+            this.links["stopPredictions"].close();
+        }
+
+        this.links["stopPredictions"] = swim.nodeRef(this.swimUrl, '/stop/' + stopTag.toString() + stopId.toString()).downlinkValue().laneUri('predictions')
+            .didSet((vehicleData, oldValue) => {
+                const nextBus = vehicleData.getItem(0).value.getItem(0);
+                if(nextBus) {
+                    this.stopPopoverContent.getCachedElement("354a406f").text(`${nextBus.get("seconds").numberValue(0)} sec.`);
+                }
+                console.info(vehicleData.getItem(0).value.getItem(0));
+                // this.agencies[agencyTag].details = newValue;
+                // this.links["agencyDetail-" + agencyTag].close();
+            })
+            .open();        
 
     }    
 
