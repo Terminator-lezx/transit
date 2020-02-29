@@ -166,6 +166,14 @@
   line-height: 1.2;
 }
 
+.prediction h4 {
+  margin: 0px;
+  padding: 2px;
+  text-align: left;
+  font-size: 14px;
+  background-color: cadetblue;
+}
+
 .infogrid {
   display: flex;
   flex-direction: column;
@@ -440,3 +448,4 @@
   font-size: 16px;
   color: #9B9B9B;  
 }
+

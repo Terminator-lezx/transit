@@ -61,7 +61,7 @@ public class ApiRequestAgent extends AbstractAgent {
 
     @Override
     public void didStart() {
-        System.out.println("api request agent started");
+        // System.out.println("api request agent started");
     }      
     
     private Value parse(URL url) {

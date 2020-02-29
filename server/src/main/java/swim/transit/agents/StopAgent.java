@@ -43,51 +43,52 @@ public class StopAgent extends AbstractAgent {
             this.stopData.set(newInfo.get("stopData"));
             this.stopId = newInfo.get("stopData").get("stopId").stringValue("");
             this.stopKey = newInfo.get("stopKey").stringValue("");
-            this.getStopPredictions();
+            // this.getStopPredictions();
 
     });    
 
     @SwimLane("updateStopPredictions")
     public CommandLane<Record> updateStopPredictionsCommand = this.<Record>commandLane()
         .onCommand((Record newData) -> {
+          // System.out.println(newData);
+          this.predictions.set(newData);
+          // final Iterator<Item> dataIterator = newData.iterator();
+          // Record finalPredictionData = Record.create();
 
-          final Iterator<Item> dataIterator = newData.iterator();
-          Record finalPredictionData = Record.create();
-
-          while(dataIterator.hasNext()) {
-            final Item dataRow = dataIterator.next();
-            final Value header = dataRow.getAttr("predictions");      
-            final Value prediction = dataRow.tail();
+          // while(dataIterator.hasNext()) {
+          //   final Item dataRow = dataIterator.next();
+          //   final Value header = dataRow.getAttr("predictions");      
+          //   final Value prediction = dataRow.tail();
             
-            if (header.isDefined()) {
-              this.predictionInfo.set(header);
-            }
-            if(prediction.isDefined()) {
-              // System.out.println(prediction);
+          //   if (header.isDefined()) {
+          //     this.predictionInfo.set(header);
+          //   }
+          //   if(prediction.isDefined()) {
+          //     // System.out.println(prediction);
 
-              final Iterator<Item> predictionIterator = prediction.iterator();
-              while(predictionIterator.hasNext()) {
-                final Item directionRow = predictionIterator.next();
-                final Value direction = directionRow.getAttr("direction");
+          //     final Iterator<Item> predictionIterator = prediction.iterator();
+          //     while(predictionIterator.hasNext()) {
+          //       final Item directionRow = predictionIterator.next();
+          //       final Value direction = directionRow.getAttr("direction");
                 
-                if(direction.isDefined()) {
-                  final Value directionData = directionRow.tail();
-                  final Iterator<Item> directionDataIterator = directionData.iterator();
-                  Record predictionList = Record.create();
-                  while(directionDataIterator.hasNext()) {
-                    Item predictionData = directionDataIterator.next();
-                    final Value predictionContent = predictionData.getAttr("prediction");
-                    if(predictionContent.isDefined()) {
-                      predictionList.add(predictionContent);
+          //       if(direction.isDefined()) {
+          //         final Value directionData = directionRow.tail();
+          //         final Iterator<Item> directionDataIterator = directionData.iterator();
+          //         Record predictionList = Record.create();
+          //         while(directionDataIterator.hasNext()) {
+          //           Item predictionData = directionDataIterator.next();
+          //           final Value predictionContent = predictionData.getAttr("prediction");
+          //           if(predictionContent.isDefined()) {
+          //             predictionList.add(predictionContent);
                       
-                    }
-                  }
-                  finalPredictionData.slot(direction.get("title").stringValue(), predictionList);
-                }
-              }
-            }
-          }
-          this.predictions.set(finalPredictionData);
+          //           }
+          //         }
+          //         finalPredictionData.slot(direction.get("title").stringValue(), predictionList);
+          //       }
+          //     }
+          //   }
+          // }
+          // this.predictions.set(finalPredictionData);
           
         });
   /**
@@ -109,7 +110,7 @@ public class StopAgent extends AbstractAgent {
     // send command to apiRequestAgent to fetch data
     command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/routePrediction"), Uri.parse("makeRequest"), apiRequestInfo);    
 
-    this.startPredictionRefreshTimer();
+    // this.startPredictionRefreshTimer();
   }  
 
   private void startPredictionRefreshTimer() {

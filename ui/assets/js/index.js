@@ -530,27 +530,41 @@ class IndexPage {
         this.stopPopoverContent.getCachedElement("e29f4721").text(stopId);
         this.stopPopoverContent.getCachedElement("ff42bb71").text(stopTag);
         this.stopPopoverContent.getCachedElement("30f5f741").text(stopTitle);
-        this.stopPopoverContent.getCachedElement("354a406f").text("");
-        this.stopPopoverContent.getCachedElement("43f682b0").text("");
+        // this.stopPopoverContent.getCachedElement("354a406f").text("");
+        // this.stopPopoverContent.getCachedElement("43f682b0").text("");
         if(this.links["stopPredictions"] && this.links["stopPredictions"].close()) {
             this.links["stopPredictions"].close();
         }
 
-        this.links["stopPredictions"] = swim.nodeRef(this.swimUrl, '/stop/' + stopTag.toString() + stopId.toString()).downlinkValue().laneUri('predictions')
+        this.links["stopPredictions"] = swim.nodeRef(this.swimUrl, '/stop/' + routeTag.toString() + stopTag.toString()).downlinkValue().laneUri('predictions')
             .didSet((vehicleData, oldValue) => {
                 if(vehicleData != swim.Value.absent()) {
                     const nextBus = vehicleData.getItem(0).value.getItem(0);
-                    if(nextBus) {
-                        const vehicleIdDiv = this.stopPopoverContent.getCachedElement("43f682b0")
-                        this.stopPopoverContent.getCachedElement("354a406f").text(`${nextBus.get("seconds").numberValue(0)} sec.`);
-                        vehicleIdDiv.text(`${nextBus.get("vehicle").stringValue("?")}`);
-                        vehicleIdDiv.node.onmouseup = (evt) => {
+                    // if(nextBus) {
+                    //     const vehicleIdDiv = this.stopPopoverContent.getCachedElement("43f682b0")
+                    //     this.stopPopoverContent.getCachedElement("354a406f").text(`${nextBus.get("seconds").numberValue(0)} sec.`);
+                    //     vehicleIdDiv.text(`${nextBus.get("vehicle").stringValue("?")}`);
+                    //     vehicleIdDiv.node.onmouseup = (evt) => {
+                    //         const vehId = nextBus.get("vehicle").stringValue("") + "-" + routeTag; 
+                    //         this.renderBusPopover(this.vehicleMarkers[vehId], vehId);
+                    //     }
+                        
+                    // }
+                    const directions = vehicleData.get("directions");
+                    const predictionsDiv = this.stopPopoverContent.getCachedElement("4bb081f1");
+                    predictionsDiv.node.innerHTML = "";
+                    directions.forEach((dirTitle) => {
+                        const title = dirTitle.key.stringValue();
+                        const nextBus = directions.get(title).getItem(0);
+                        const predictionRow = document.createElement("div");
+                        predictionRow.className = "prediction";
+                        predictionRow.innerHTML += "<h4>" + title + "</h4>Next Bus: # " + nextBus.get("vehicle") + " in " + nextBus.get("minutes") + "m<br>";
+                        predictionRow.onmouseup = (evt) => {
                             const vehId = nextBus.get("vehicle").stringValue("") + "-" + routeTag; 
                             this.renderBusPopover(this.vehicleMarkers[vehId], vehId);
                         }
-                        
-                    }
-                    console.info(vehicleData.getItem(0).value.getItem(0));
+                        predictionsDiv.appendChild(predictionRow);
+                    })
     
                 }
                 // this.agencies[agencyTag].details = newValue;
