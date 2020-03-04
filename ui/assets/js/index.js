@@ -197,7 +197,7 @@ class IndexPage {
             .backdropFilter("blur(2px)");
             
         this.stopPopoverContent = swim.HtmlView.create("div");
-        this.stopPopoverContent.render("e03c39dc");
+        this.stopPopoverContent.render("aeeebe8b");
         this.stopPopoverView.append(this.stopPopoverContent);
         this.rootSwimElement.append(this.stopPopoverView);
 
@@ -413,7 +413,7 @@ class IndexPage {
                 .on("click", (evt) => {
                     console.info("bus clicked:" + vehicleData);
                     const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
-                    this.renderBusPopover(tempMarker, vehicleId);
+                    this.renderBusPopover(tempMarker, vehicleId, newRgb);
                 })
                 .on("mouseover", (evt) => {
                     tempMarker.fill(swim.Color.rgb(0,255,0), this.fastTween);
@@ -484,18 +484,19 @@ class IndexPage {
         let markerFillColor = pathColor.alpha(0.1);//newRgb.alpha(0.75);
         let markerStrokeColor = pathColor; //newRgb.alpha(0.95);
         let markerId = stopData.get("stopId").stringValue("deadbeef");
+        let defaultRadius = 10;
         let tempMarker = new swim.MapCircleView()
             // .center([newLat, newLng])
             .center([stopData.get("lon").numberValue(0), stopData.get("lat").numberValue(0)])
             // .center(mapboxgl.LngLat.convert([newLng, newLat]))
-            .radius(8)
+            .radius(defaultRadius)
             .fill(markerFillColor)
             .stroke(markerStrokeColor)
             .strokeWidth(1)
             .on("click", (evt) => {
                 // console.info("stop clicked:" + stopData);
                 // const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
-                this.renderStopPopover(tempMarker, stopData, routeTag);
+                this.renderStopPopover(tempMarker, stopData, routeTag, pathColor);
             })
             .on("mouseover", (evt) => {
                 tempMarker.fill(swim.Color.rgb(255,255,100), this.fastTween);
@@ -504,7 +505,7 @@ class IndexPage {
                 // console.info("bus mouse over:" + vehicleData);
             })
             .on("mouseout", (evt) => {
-                tempMarker.radius(6, this.fastTween);
+                tempMarker.radius(defaultRadius, this.fastTween);
                 tempMarker.fill(markerFillColor, this.fastTween);
                 tempMarker.stroke(markerStrokeColor, this.fastTween);
                 // console.info("bus mouse out:" + vehicleData);
@@ -515,7 +516,7 @@ class IndexPage {
     }
 
 
-    renderStopPopover(tempMarker, stopData, routeTag) {
+    renderStopPopover(tempMarker, stopData, routeTag, pathColor) {
 
         console.info("stop clicked:" + stopData);
         const stopId = stopData.get("stopId").stringValue("0");
@@ -527,9 +528,10 @@ class IndexPage {
         this.stopPopoverView.showPopover(this.fastTween);     
 
         
-        this.stopPopoverContent.getCachedElement("e29f4721").text(stopId);
-        this.stopPopoverContent.getCachedElement("ff42bb71").text(stopTag);
-        this.stopPopoverContent.getCachedElement("30f5f741").text(stopTitle);
+        this.stopPopoverContent.getCachedElement("2056d955").text(`Stop ID: ${stopId} Tag:${stopTag}`);
+        this.stopPopoverContent.getCachedElement("2056d955").backgroundColor(pathColor);
+        // this.stopPopoverContent.getCachedElement("ff42bb71").text(stopTag);
+        this.stopPopoverContent.getCachedElement("362bcb36").text(stopTitle);
         // this.stopPopoverContent.getCachedElement("354a406f").text("");
         // this.stopPopoverContent.getCachedElement("43f682b0").text("");
         if(this.links["stopPredictions"] && this.links["stopPredictions"].close()) {
@@ -551,7 +553,7 @@ class IndexPage {
                         
                     // }
                     const directions = vehicleData.get("directions");
-                    const predictionsDiv = this.stopPopoverContent.getCachedElement("4bb081f1");
+                    const predictionsDiv = this.stopPopoverContent.getCachedElement("6c24e456");
                     predictionsDiv.node.innerHTML = "";
                     directions.forEach((dirTitle) => {
                         const title = dirTitle.key.stringValue();
