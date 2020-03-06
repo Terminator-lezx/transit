@@ -47,8 +47,13 @@ public class ApplicationPlane extends AbstractPlane {
   AgentRoute<UserPrefsAgent> userPrefsAgent;
 
   @SwimRoute("/apiRequestAgent/:id")
-  AgentRoute<ApiRequestAgent> apiRequestAgent;
+  AgentRoute<ApiRequestAgent> apiRequestAgentById;
 
+  @SwimRoute("/apiRequestAgent/:type/:id")
+  AgentRoute<ApiRequestAgent> apiRequestAgentByType;
+
+  @SwimRoute("/apiRequestAgent/:type/:agency/:id")
+  AgentRoute<ApiRequestAgent> apiRequestAgentByAgency;
   /**
    * The LayoutManager Agent manages the list of available layout templates,
    * loads existing templates on startup and the add/remove of templates

@@ -404,6 +404,7 @@ class IndexPage {
         let markerId = vehicleData.get("id").stringValue("") + "-" + vehicleData.get("routeTag").stringValue("").replace(/\s/g, '');
 
         if(!this.vehicleMarkers[markerId]) {
+            const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
             let tempMarker = new swim.MapCircleView()
                 .center([vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)])
                 .radius(6)
@@ -412,7 +413,7 @@ class IndexPage {
                 .strokeWidth(1)
                 .on("click", (evt) => {
                     console.info("bus clicked:" + vehicleData);
-                    const vehicleId = vehicleData.get("id").stringValue().replace(/\s/g, '') + "-" + vehicleData.get("routeTag").stringValue().replace(/\s/g, '')
+                    
                     this.renderBusPopover(tempMarker, vehicleId, newRgb);
                 })
                 .on("mouseover", (evt) => {
@@ -438,6 +439,16 @@ class IndexPage {
 
             this.overlay.setChildView(markerId, tempMarker);
             this.vehicleMarkers[markerId] = tempMarker;  
+
+            swim.nodeRef(this.swimUrl, '/vehicle/' + vehicleId).downlinkValue().laneUri('isLate')
+                .didSet((newValue, oldValue) => {
+                    if(newValue.booleanValue() == true) {
+                        tempMarker.radius(15);
+                    } else {
+                        tempMarker.radius(6);
+                    }
+                })
+                .open();            
         } else {
             let tempMarker = this.vehicleMarkers[markerId]
             const newCenter = [vehicleData.get("lon").numberValue(0), vehicleData.get("lat").numberValue(0)];

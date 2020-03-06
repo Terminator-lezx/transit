@@ -100,11 +100,12 @@ public class RouteAgent extends AbstractAgent {
                     final Value stopData = stopItem.getAttr("stop");
 
                     // System.out.println(stopData);
-                    String stopKey = this.routeTag + stopData.get("stopId").stringValue("");
+                    String stopKey = this.routeTag + stopData.get("tag").stringValue();
                     Record stopRecord = Record.create()
                       .slot("agencyTag", this.agencyTag)
                       .slot("stopKey", stopKey)
-                      .slot("stopData", stopData);
+                      .slot("stopData", stopData)
+                      .slot("routeTag", routeTag);
 
                     // add this stop to the predictions query url 
                     this.stopIdQueryString += String.format("&stops=%s|%s", this.routeTag, stopData.get("tag").stringValue("id"));
@@ -189,12 +190,10 @@ public class RouteAgent extends AbstractAgent {
         
         
         Record predictionData = Record.create();
-        // Record tagData = Record.create();
-        String stopTag = "";
+        String stopKey = "";
 
         //for each row of returned xml data
         while(xmlIterator.hasNext()) {
-          // System.out.println("------------------------------------");
           Item xmlRowData = xmlIterator.next();
           if(xmlRowData != Value.absent()) {
             // for each <predictions> set, loop over contents
@@ -204,8 +203,8 @@ public class RouteAgent extends AbstractAgent {
               Record parsedData = Record.create();
               Record directionData = Record.create();
 
-              String stopKey = this.routeTag + predictionsAttr.get("stopTag").stringValue("-1");
-              // command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/stop/" + stopKey), Uri.parse("updateStopPredictions"), Record.of(xmlRowData));
+              // this is the ID of the current stop we are parsing predictions for
+              stopKey = this.routeTag + predictionsAttr.get("stopTag").stringValue();
 
               final Iterator<Item> directionsIterator = predictionsData.iterator();
               // for each <direction> tag in <predictions>
@@ -218,6 +217,7 @@ public class RouteAgent extends AbstractAgent {
                     // System.out.println(directionRow);
                     
                     // for each row inside <directions> tag find predictions
+                    // build a new Record which holds a list of each predictions for this direction
                     final Iterator<Item> predictionRows = directionRow.iterator();
                     while(predictionRows.hasNext()) {
                       Item currentRow = predictionRows.next();
@@ -225,28 +225,26 @@ public class RouteAgent extends AbstractAgent {
                       if(directionAttr != Value.absent()) {
                         Item predictionRowData = currentRow;
                         parsedPredictions.add(currentRow.getAttr("prediction").tail());
-                        // System.out.println(currentRow.getAttr("prediction").tail());
-                        
-
+                        // System.out.print(stopKey + " || ");
+                        // System.out.print(currentRow.getAttr("prediction").tail().get("tripTag").stringValue());
+                        // System.out.print(" || ");
+                        // System.out.print(currentRow.getAttr("prediction").tail().get("vehicle").intValue());
+                        // System.out.print(" || ");
+                        // System.out.println(currentRow.getAttr("prediction").tail().get("seconds").intValue());
                       }
                     }
+                    // append predictions to list of directions
                     directionData.put(directionRow.getAttr("direction").get("title").stringValue("none"), parsedPredictions);
-                    // directionData.put("predictions", parsedPredictions);
                   }
-                  
-                  // directionData.put("title", directionRow.getAttr("direction").get("title").stringValue("none"));
-                  
-                  
                 }
               }
+              // put parsed directions record on parsedData object
               parsedData.put("directions", directionData);
 
-              // String stopKey = this.routeTag + parsedData.get("stopData").get("stopTag").stringValue("-1");
-              // System.out.println(stopKey);
+              // send new stop data to the correct stop webagent
               command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/stop/" + stopKey), Uri.parse("updateStopPredictions"), parsedData);
             }
           }
-          // System.out.println("------------------------------------");
         }     
 
     });
@@ -268,7 +266,7 @@ public class RouteAgent extends AbstractAgent {
       .slot("apiUrl", this.routeUrl + this.agencyTag + "&r=" + this.routeTag);
 
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/routeDetails"), Uri.parse("makeRequest"), apiRequestInfo);    
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/routeDetails/%s/%s", this.agencyTag, this.routeTag)), Uri.parse("makeRequest"), apiRequestInfo);    
   }
 
   private void getRouteSchedule() {
@@ -280,7 +278,7 @@ public class RouteAgent extends AbstractAgent {
       .slot("apiUrl", this.scheduleUrl + this.agencyTag + "&r=" + this.routeTag);
 
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/routeSchedule"), Uri.parse("makeRequest"), apiRequestInfo);    
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/routeSchedule/%s/%s", this.agencyTag, this.routeTag)), Uri.parse("makeRequest"), apiRequestInfo);    
   }  
 
   private void getStopPredictions() {
@@ -293,7 +291,7 @@ public class RouteAgent extends AbstractAgent {
 
     // System.out.println(this.stopIdQueryString);
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/%sRouteSchedule", this.routeUid)), Uri.parse("makeRequest"), apiRequestInfo);   
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/stopPredictions/%s/%s", this.agencyTag, this.routeUid)), Uri.parse("makeRequest"), apiRequestInfo);   
     this.startPredictionRefreshTimer(); 
   }
 
@@ -302,7 +300,10 @@ public class RouteAgent extends AbstractAgent {
       this.predictionRefreshTimer.cancel();
     }
 
-    this.predictionRefreshTimer = setTimer((10000), this::getStopPredictions);
+    int intervalMin = 4000;
+    int intervalMax = 6000;
+    int newInterval = (int) (Math.random() * (intervalMax - intervalMin)) + intervalMin;
+    this.predictionRefreshTimer = setTimer((newInterval), this::getStopPredictions);
   } 
 
 }

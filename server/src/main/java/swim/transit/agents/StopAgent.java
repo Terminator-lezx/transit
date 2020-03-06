@@ -20,11 +20,11 @@ import java.util.List;
 
 public class StopAgent extends AbstractAgent {
 
+    private String routeTag;
     private String stopId;
     private String stopKey;
     private String agencyTag;
     private String scheduleUrl = "http://webservices.nextbus.com/service/publicXMLFeed?command=predictions&a=";
-    private TimerRef predictionRefreshTimer;
 
     @SwimLane("stopData")
     public ValueLane<Value> stopData;
@@ -35,62 +35,63 @@ public class StopAgent extends AbstractAgent {
     @SwimLane("predictions")
     public ValueLane<Record> predictions;
 
+    @SwimLane("directions")
+    public ValueLane<Record> directions;
+
     @SwimLane("updateStop")
     public CommandLane<Record> updateAgencyInfoCommand = this.<Record>commandLane()
         .onCommand((Record newInfo) -> {
+
+            // System.out.println(newInfo);
 
             this.agencyTag = newInfo.get("agencyTag").stringValue("");
             this.stopData.set(newInfo.get("stopData"));
             this.stopId = newInfo.get("stopData").get("stopId").stringValue("");
             this.stopKey = newInfo.get("stopKey").stringValue("");
-            // this.getStopPredictions();
+            this.routeTag = newInfo.get("routeTag").stringValue("");
 
+            // System.out.println(this.stopId);
     });    
 
     @SwimLane("updateStopPredictions")
     public CommandLane<Record> updateStopPredictionsCommand = this.<Record>commandLane()
         .onCommand((Record newData) -> {
-          // System.out.println(newData);
           this.predictions.set(newData);
-          // final Iterator<Item> dataIterator = newData.iterator();
-          // Record finalPredictionData = Record.create();
-
-          // while(dataIterator.hasNext()) {
-          //   final Item dataRow = dataIterator.next();
-          //   final Value header = dataRow.getAttr("predictions");      
-          //   final Value prediction = dataRow.tail();
-            
-          //   if (header.isDefined()) {
-          //     this.predictionInfo.set(header);
-          //   }
-          //   if(prediction.isDefined()) {
-          //     // System.out.println(prediction);
-
-          //     final Iterator<Item> predictionIterator = prediction.iterator();
-          //     while(predictionIterator.hasNext()) {
-          //       final Item directionRow = predictionIterator.next();
-          //       final Value direction = directionRow.getAttr("direction");
-                
-          //       if(direction.isDefined()) {
-          //         final Value directionData = directionRow.tail();
-          //         final Iterator<Item> directionDataIterator = directionData.iterator();
-          //         Record predictionList = Record.create();
-          //         while(directionDataIterator.hasNext()) {
-          //           Item predictionData = directionDataIterator.next();
-          //           final Value predictionContent = predictionData.getAttr("prediction");
-          //           if(predictionContent.isDefined()) {
-          //             predictionList.add(predictionContent);
-                      
-          //           }
-          //         }
-          //         finalPredictionData.slot(direction.get("title").stringValue(), predictionList);
-          //       }
-          //     }
-          //   }
-          // }
-          // this.predictions.set(finalPredictionData);
           
+          Record nextBuses = Record.create();
+          newData.get("directions").forEach(directionData -> { 
+            Value dirData = newData.get("directions").get(directionData.key());
+            // System.out.print("dir data=");
+            // System.out.println(dirData);
+            if(dirData != Value.absent() && dirData.getItem(0) != Value.absent()) {
+              Record nextBus = (Record)dirData.getItem(0);
+              Value stopInfo = this.stopData.get();
+              // System.out.println("--------");    
+              // System.out.print("nextbus=");
+              // System.out.println(nextBus);    
+              // System.out.print("stopinfo=");
+              // System.out.println(stopInfo);    
+              // System.out.println("--------");    
+
+              if(nextBus != Record.empty() && nextBus.get("seconds").intValue() == 0) {
+                String vehicleId = nextBus.get("vehicle").stringValue().replaceAll("\\s+","");
+                vehicleId += "-" + this.routeTag.replaceAll("\\s+","");
+
+                command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/vehicle/" + vehicleId), Uri.parse("checkStopArrival"), stopInfo);
+              }
+
+              // nextBuses.putSlot(stopInfo.get("tripTag").stringValue(), Value.fromObject(nextBus));
+              // System.out.println(predItem);
+              // Value seconds = predItem.get("seconds");
+              // if(seconds != Value.absent()) {
+              //   System.out.println(predItem); 
+              // }
+              
+            }
+          });
+          // System.out.println(nextBuses);
         });
+
   /**
     Standard startup method called automatically when WebAgent is created
    */
@@ -98,26 +99,5 @@ public class StopAgent extends AbstractAgent {
   public void didStart() {
     // System.out.println("Stop  Agent Started: ");
   }
-
-  private void getStopPredictions() {
-    // create record which will tell apiRequestAgent where to get data and where to put the result
-    Record apiRequestInfo = Record.create()
-      .slot("targetHost", "warp://127.0.0.1:9001")
-      .slot("targetAgent", "/stop/" + this.stopKey)
-      .slot("targetLane", "updateStopPredictions")
-      .slot("apiUrl", scheduleUrl + this.agencyTag + "&stopId=" + this.stopId);
-// System.out.println(apiRequestInfo);
-    // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/routePrediction"), Uri.parse("makeRequest"), apiRequestInfo);    
-
-    // this.startPredictionRefreshTimer();
-  }  
-
-  private void startPredictionRefreshTimer() {
-    if(this.predictionRefreshTimer != null && this.predictionRefreshTimer.isScheduled()) {
-      this.predictionRefreshTimer.cancel();
-    }
-
-    this.predictionRefreshTimer = setTimer((30000), this::getStopPredictions);
-  }  
+ 
 }

@@ -92,7 +92,7 @@ public class AgencyAgent extends AbstractAgent {
           String vehicleId = vehicleData.get("id").stringValue().replaceAll("\\s+","");
           vehicleId += "-" + vehicleData.get("routeTag").stringValue().replaceAll("\\s+","");
           this.vehicleList.put(vehicleId, vehicleData);
-          command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/vehicle/" + vehicleId), Uri.parse("updateVehicle"), vehicleData);
+          command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/vehicle/%s", vehicleId)), Uri.parse("updateVehicle"), vehicleData);
         }
       }
       
@@ -124,7 +124,7 @@ public class AgencyAgent extends AbstractAgent {
             .slot("title", routeTitle);
 
           this.routeList.put(routeUID, routeTitle);
-          command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/routes/" + routeUID), Uri.parse("updateRouteInfo"), routeInfo);
+          command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/routes/%s", routeUID)), Uri.parse("updateRouteInfo"), routeInfo);
           // final Route route = new Route().withTag(header.get("tag").stringValue()).withTitle(header.get("title").stringValue());
           // routes.add(route);
         }        
@@ -159,7 +159,7 @@ public class AgencyAgent extends AbstractAgent {
       .slot("apiUrl", routeUrl + tag);
 
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/routes"), Uri.parse("makeRequest"), apiRequestInfo);    
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/routes/%s", tag)), Uri.parse("makeRequest"), apiRequestInfo);    
   }
 
   private void getVehicleList() {
@@ -177,7 +177,7 @@ public class AgencyAgent extends AbstractAgent {
 
       // System.out.println(apiRequestInfo);
     // send command to apiRequestAgent to fetch data
-    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/apiRequestAgent/vehicles"), Uri.parse("makeRequest"), apiRequestInfo);   
+    command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse(String.format("/apiRequestAgent/vehicles/%s", tag)), Uri.parse("makeRequest"), apiRequestInfo);   
     this.lastVehicleUpdateTime = System.currentTimeMillis();    
   }
 
@@ -198,6 +198,6 @@ public class AgencyAgent extends AbstractAgent {
       this.vehicleRefreshTimer.cancel();
     }
 
-    this.vehicleRefreshTimer = setTimer(500, this::getVehicleList);
+    this.vehicleRefreshTimer = setTimer(5000, this::getVehicleList);
   }   
 }
