@@ -81,14 +81,25 @@ public class VehicleAgent extends AbstractAgent {
               Record closestStopInfo = this.closestStop.get();
               closestLatDiff = Math.abs(closestStopInfo.get("lat").doubleValue(0d) - this.location.get().get("lat").doubleValue(0d));
               closestLonDiff = Math.abs(closestStopInfo.get("lon").doubleValue(0d) - this.location.get().get("lng").doubleValue(0d));
-              if(closestLatDiff < latDiff && closestLonDiff < lonDiff) {
+              // System.out.println(String.format("%s < %s && %s < %s", closestLatDiff, latDiff, closestLonDiff, lonDiff));
+              // System.out.println(String.format("%s && %s", closestLatDiff <= latDiff, closestLonDiff <= lonDiff));
+              if(closestLatDiff <= latDiff || closestLonDiff <= lonDiff) {
                 this.closestStop.set(stopInfo);
               }
 
             }
 
-            // System.out.println(stopInfo.get("arrivalInSeconds").intValue());
-            this.isLate.set(!(closestLatDiff <= 0.002d && closestLonDiff <= 0.002d) && stopInfo.get("arrivalInSeconds").intValue(1000) == 0);
+            if(this.closestStop.get().get("arrivalInSeconds").intValue(1000) <= 90) {
+              // System.out.print(closestLatDiff);
+              // System.out.print("=");
+              // System.out.println(closestLonDiff);
+              this.isLate.set(closestLatDiff > 0.001d || closestLonDiff > 0.001d);
+            } else {
+              if(this.isLate.get()) {
+                this.isLate.set(false);
+              }              
+            }
+            
             Record newData = Record.create().concat(this.vehicleData.get());
             newData.slot("isLate", this.isLate.get());
             this.vehicleData.set(newData);
