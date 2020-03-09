@@ -22,6 +22,9 @@ public class VehicleAgent extends AbstractAgent {
     @SwimLane("vehicleData")
     public ValueLane<Record> vehicleData;
 
+    @SwimLane("closestStop")
+    public ValueLane<Record> closestStop;
+
     @SwimLane("speed")
     public ValueLane<Integer> speed;
 
@@ -60,14 +63,41 @@ public class VehicleAgent extends AbstractAgent {
     @SwimLane("checkStopArrival")
     public CommandLane<Record> checkStopArrivalCommand = this.<Record>commandLane()
         .onCommand((Record stopInfo) -> {
-          // System.out.println("check stop arrival");
-          Double latDiff = Math.abs(stopInfo.get("lat").doubleValue(0d) - this.location.get().get("lat").doubleValue(0d));
-          Double lonDiff = Math.abs(stopInfo.get("lon").doubleValue(0d) - this.location.get().get("lng").doubleValue(0d));
-          this.isLate.set(!(latDiff <= 0.002d && lonDiff <= 0.002d));
-          Record newData = Record.create().concat(this.vehicleData.get());
-          newData.slot("isLate", this.isLate.get());
-          this.vehicleData.set(newData);
-          // System.out.println(this.isLate.get());
+          if(stopInfo == Value.absent() || this.location.get() == Value.absent()) {
+            return;
+          }
+          
+          try {
+            // System.out.println("check stop arrival");
+            Double latDiff = Math.abs(stopInfo.get("lat").doubleValue(0d) - this.location.get().get("lat").doubleValue(0d));
+            Double lonDiff = Math.abs(stopInfo.get("lon").doubleValue(0d) - this.location.get().get("lng").doubleValue(0d));
+            Double closestLatDiff = latDiff;
+            Double closestLonDiff = lonDiff;
+
+            // System.out.println(this.closestStop.get());
+            if(this.closestStop.get() == Value.absent()) {
+              this.closestStop.set(stopInfo);
+            } else {
+              Record closestStopInfo = this.closestStop.get();
+              closestLatDiff = Math.abs(closestStopInfo.get("lat").doubleValue(0d) - this.location.get().get("lat").doubleValue(0d));
+              closestLonDiff = Math.abs(closestStopInfo.get("lon").doubleValue(0d) - this.location.get().get("lng").doubleValue(0d));
+              if(closestLatDiff < latDiff && closestLonDiff < lonDiff) {
+                this.closestStop.set(stopInfo);
+              }
+
+            }
+
+            // System.out.println(stopInfo.get("arrivalInSeconds").intValue());
+            this.isLate.set(!(closestLatDiff <= 0.002d && closestLonDiff <= 0.002d) && stopInfo.get("arrivalInSeconds").intValue(1000) == 0);
+            Record newData = Record.create().concat(this.vehicleData.get());
+            newData.slot("isLate", this.isLate.get());
+            this.vehicleData.set(newData);
+            // System.out.println(this.isLate.get());
+
+          } catch (Exception ex) {
+            System.out.println("VehicleAgent:checkStopArrival");
+            System.out.println(this.location.get());
+          }
 
           
         });

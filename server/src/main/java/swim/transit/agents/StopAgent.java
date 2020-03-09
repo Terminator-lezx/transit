@@ -65,7 +65,7 @@ public class StopAgent extends AbstractAgent {
             // System.out.println(dirData);
             if(dirData != Value.absent() && dirData.getItem(0) != Value.absent()) {
               Record nextBus = (Record)dirData.getItem(0);
-              Value stopInfo = this.stopData.get();
+              Record stopInfo = Record.create().concat(this.stopData.get());
               // System.out.println("--------");    
               // System.out.print("nextbus=");
               // System.out.println(nextBus);    
@@ -73,10 +73,11 @@ public class StopAgent extends AbstractAgent {
               // System.out.println(stopInfo);    
               // System.out.println("--------");    
 
-              if(nextBus != Record.empty() && nextBus.get("seconds").intValue() == 0) {
+              if(nextBus != Record.empty() && nextBus.get("seconds").intValue(1000) <= (5*60)) {
                 String vehicleId = nextBus.get("vehicle").stringValue().replaceAll("\\s+","");
                 vehicleId += "-" + this.routeTag.replaceAll("\\s+","");
 
+                stopInfo.slot("arrivalInSeconds", nextBus.get("seconds").intValue());
                 command(Uri.parse("warp://127.0.0.1:9001"), Uri.parse("/vehicle/" + vehicleId), Uri.parse("checkStopArrival"), stopInfo);
               }
 

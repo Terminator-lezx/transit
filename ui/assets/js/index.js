@@ -168,7 +168,7 @@ class IndexPage {
         });
 
         this.map.map.on('style.load', () => {
-            this.drawBuilding()
+            this.drawBuilding();
         });
 
         this.busPopoverView = new swim.PopoverView()
@@ -390,7 +390,7 @@ class IndexPage {
     }
 
     renderVehicle(vehicleData) {
-        const tween = swim.Transition.duration(1000);
+        const tween = swim.Transition.duration(7000);
         
         // console.info(vehicleData);
         let routeId = this.selectedAgency.tag + "-" + vehicleData.get("routeTag").stringValue("deadbeef");
@@ -430,7 +430,11 @@ class IndexPage {
                     }
                     let markerFillColor = newRgb.alpha(0.75);
                     let markerStrokeColor = newRgb.alpha(0.95);
-                    tempMarker.radius(6, this.fastTween);
+                    if(tempMarker["isLate"] == true) {
+                        tempMarker.radius(15, this.fastTween);
+                    } else {
+                        tempMarker.radius(6, this.fastTween);
+                    }
                     tempMarker.fill(markerFillColor, this.fastTween);
                     tempMarker.stroke(markerStrokeColor, this.fastTween);
                     // console.info("bus mouse out:" + vehicleData);
@@ -440,13 +444,15 @@ class IndexPage {
             this.overlay.setChildView(markerId, tempMarker);
             this.vehicleMarkers[markerId] = tempMarker;  
 
+            tempMarker["isLate"] = false;
             swim.nodeRef(this.swimUrl, '/vehicle/' + vehicleId).downlinkValue().laneUri('isLate')
                 .didSet((newValue, oldValue) => {
-                    if(newValue.booleanValue() == true) {
-                        tempMarker.radius(15);
-                    } else {
-                        tempMarker.radius(6);
-                    }
+                    tempMarker["isLate"] = newValue.booleanValue(false);
+                    // if(newValue.booleanValue() == true) {
+                    //     tempMarker.radius(15, tween);
+                    // } else {
+                    //     tempMarker.radius(6, tween);
+                    // }
                 })
                 .open();            
         } else {
@@ -455,6 +461,13 @@ class IndexPage {
             tempMarker.center.setState(newCenter, tween);            
             tempMarker.fill(markerFillColor);
             tempMarker.stroke(markerStrokeColor);
+
+            if(tempMarker["isLate"] == true) {
+                tempMarker.radius(15, this.fastTween);
+            } else {
+                tempMarker.radius(6, this.fastTween);
+            }
+                
 
         }
           
@@ -628,14 +641,15 @@ class IndexPage {
         // document.getElementById("mainTitle").innerText = this.selectedAgency.info.get("title").stringValue();
 
         // center map on agency area
-        const agencyBounds = this.selectedAgency.details.get("agencyBounds");
-        var bbox = [
-            [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
-            [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
+        // // !! disabled for now until finging agency bounds on server side is fixed !!
+        // const agencyBounds = this.selectedAgency.details.get("agencyBounds");
+        // var bbox = [
+        //     [agencyBounds.get("minLong").numberValue(), agencyBounds.get("minLat").numberValue()],
+        //     [agencyBounds.get("maxLong").numberValue(), agencyBounds.get("maxLat").numberValue()]
 
-        ];
-        this.map.map.setPitch(0);
-        this.map.map.fitBounds(bbox, {padding: 20});  
+        // ];
+        // this.map.map.setPitch(0);
+        // this.map.map.fitBounds(bbox, {padding: 20});  
 
         // get all route data for selected agency
         const routeLink = swim.nodeRef(this.swimUrl, '/agency/' + agencyTag).downlinkMap().laneUri('routeList')
@@ -894,9 +908,9 @@ class IndexPage {
                 'source-layer': 'building',
                 'filter': ['==', 'extrude', 'true'],
                 'type': 'fill-extrusion',
-                'minzoom': 5,
+                'minzoom': 17,
                 'paint': {
-                    'fill-extrusion-color': '#aaa',
+                    'fill-extrusion-color': '#333',
 
                     // use an 'interpolate' expression to add a smooth transition effect to the
                     // buildings as the user zooms in
@@ -918,7 +932,7 @@ class IndexPage {
                         15.05,
                         ['get', 'min_height']
                     ],
-                    'fill-extrusion-opacity': 0.75
+                    'fill-extrusion-opacity': 0.5
                 }
             },
             labelLayerId
