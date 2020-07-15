@@ -23,5 +23,5 @@ A set of Plain Old Java Objects (POJOs) fundamental to the Swim server's logic.
 
 These should be self-explanatory, as most of them simply wrap a handful of fields and lack non-getter and -setter methods. The only tricky piece is that any classes that are used as lane types within our Web Agents must be serializable/deserializable to/from Recon. Recall that a `swim.structure.Form` object has methods to store these rules; we generate `Forms` for all
 
-Further reading: [Forms](/TODO).
+Further reading: [Forms](http://docs.swim.ai/js/latest/modules/_swim_structure.html#forms).
 
